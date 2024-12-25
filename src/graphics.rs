@@ -1,8 +1,10 @@
-use framebuffer::{error::FrameBufferError, FrameBuffer};
+use framebuffer::raw::RawFrameBuffer;
 use uefi::{boot, proto::console::gop::GraphicsOutput};
 
+use crate::error::FrameBufferErrorExt;
+
 /// Set up GOP framebuffer
-pub(crate) fn initialize_framebuffer() -> Result<FrameBuffer, FrameBufferErrorExt> {
+pub(crate) fn initialize_framebuffer() -> Result<RawFrameBuffer, FrameBufferErrorExt> {
     let handle =
         boot::get_handle_for_protocol::<GraphicsOutput>().map_err(FrameBufferErrorExt::from)?;
     let mut gop = boot::open_protocol_exclusive::<GraphicsOutput>(handle)
@@ -18,7 +20,7 @@ pub(crate) fn initialize_framebuffer() -> Result<FrameBuffer, FrameBufferErrorEx
     };
 
     Ok(unsafe {
-        FrameBuffer::new(
+        RawFrameBuffer::new(
             gop.frame_buffer().as_mut_ptr(),
             gop_fb_size,
             gop_mode.resolution().0,
@@ -27,12 +29,4 @@ pub(crate) fn initialize_framebuffer() -> Result<FrameBuffer, FrameBufferErrorEx
             format,
         )
     })
-}
-
-#[derive(Debug, thiserror_no_std::Error)]
-pub(crate) enum FrameBufferErrorExt {
-    #[error("FrameBuffer error: {0}")]
-    FrameBuffer(#[from] FrameBufferError),
-    #[error("Uefi error: {0}")]
-    Uefi(#[from] uefi::Error),
 }

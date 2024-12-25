@@ -8,6 +8,7 @@ use log::{error, info};
 use qemu_print::qemu_println;
 use uefi::prelude::*;
 
+mod error;
 mod graphics;
 
 #[entry]
