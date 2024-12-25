@@ -48,6 +48,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e763eef8846b13b380f37dfecda401770b0ca4e56e95170237bd7c25c7db3582"
 
 [[package]]
+name = "fonts"
+version = "0.1.0"
+
+[[package]]
 name = "framebuffer"
 version = "0.1.0"
 dependencies = [
@@ -222,6 +226,7 @@ dependencies = [
 name = "uefi-loader"
 version = "0.1.0"
 dependencies = [
+ "fonts",
  "framebuffer",
  "log",
  "qemu_print",

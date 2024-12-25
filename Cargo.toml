@@ -11,5 +11,8 @@ uefi = { version = "0.33.0", features = [
     "alloc",
 ] }
 qemu_print = "0.1.0"
-framebuffer = { path = "../graphics-core/framebuffer" } # todo: change this to the gihtub repo
 thiserror-no-std = "2.0.2"
+
+# todo: change this to the gihtub repos
+framebuffer = { path = "../graphics-core/framebuffer" }
+fonts = { path = "../graphics-core/fonts" }

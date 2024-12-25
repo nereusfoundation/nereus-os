@@ -1,15 +1,20 @@
 #![no_main]
 #![no_std]
 
+extern crate alloc;
+
 use core::panic::PanicInfo;
 
-use graphics::initialize_framebuffer;
+use graphics::{initialize_framebuffer, parse_psf_font};
 use log::{error, info};
 use qemu_print::qemu_println;
 use uefi::prelude::*;
 
 mod error;
+mod file;
 mod graphics;
+
+const PSF_FILE_NAME: &str = "font.psf";
 
 #[entry]
 fn main() -> Status {
@@ -33,6 +38,8 @@ fn main() -> Status {
                         .unwrap();
                 }
             }
+            let font = parse_psf_font(PSF_FILE_NAME).unwrap();
+            qemu_print::qemu_println!("font: {:#?}", font);
         }
         // this won't always be shown in the console, because stdout may not be avaialable in some cases
         Err(err) => error!("Bootloader: Failed to initialize framebuffer: {}", err),
