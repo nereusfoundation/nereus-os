@@ -10,6 +10,8 @@ use crate::{
     file,
 };
 
+pub(crate) mod logger;
+
 /// Set up GOP framebuffer
 pub(crate) fn initialize_framebuffer() -> Result<RawFrameBuffer, FrameBufferErrorExt> {
     let handle =

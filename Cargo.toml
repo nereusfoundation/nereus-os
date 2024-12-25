@@ -16,3 +16,4 @@ thiserror-no-std = "2.0.2"
 # todo: change this to the gihtub repos
 framebuffer = { path = "../graphics-core/framebuffer" }
 fonts = { path = "../graphics-core/fonts" }
+sync = { path = "../sync" }

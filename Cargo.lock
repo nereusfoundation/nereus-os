@@ -56,6 +56,7 @@ name = "framebuffer"
 version = "0.1.0"
 dependencies = [
  "fonts",
+ "sync",
  "thiserror-no-std",
 ]
 
@@ -168,6 +169,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "sync"
+version = "0.1.0"
+
+[[package]]
 name = "thiserror-impl-no-std"
 version = "2.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -231,6 +236,7 @@ dependencies = [
  "framebuffer",
  "log",
  "qemu_print",
+ "sync",
  "thiserror-no-std",
  "uefi",
 ]

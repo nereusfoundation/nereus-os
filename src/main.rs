@@ -3,14 +3,12 @@
 
 extern crate alloc;
 
-use core::{fmt::Write, panic::PanicInfo};
+use core::panic::PanicInfo;
 
 use framebuffer::{color::Color, raw::write::RawWriter};
-use graphics::{initialize_framebuffer, parse_psf_font};
+use graphics::{initialize_framebuffer, logger::LOGGER, parse_psf_font};
 use log::{error, info};
-use qemu_print::qemu_println;
 use uefi::prelude::*;
-
 mod error;
 mod file;
 mod graphics;
@@ -27,16 +25,20 @@ fn main() -> Status {
             framebuffer.fill(Color::new(0, 0, 0));
             let font = parse_psf_font(PSF_FILE_NAME).unwrap();
 
-            let mut writer = RawWriter::new(
+            let writer = RawWriter::new(
                 font,
                 framebuffer,
                 Color::new(255, 255, 255),
                 Color::new(0, 0, 0),
             );
 
-            writer.write_str("Writer works! :)").unwrap();
+            LOGGER.initialize(writer);
+
+            log!("Hello Logging so cool!");
+
+            panic!("OH NO!!!");
         }
-        // this won't always be shown in the console, because stdout may not be avaialable in some cases
+        // this won't always be shown in the console, because stdout may not be available in some cases
         Err(err) => error!("Bootloader: Failed to initialize framebuffer: {}", err),
     }
 
@@ -47,6 +49,6 @@ fn main() -> Status {
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
     error!("Panic occurred: \n{:#?}", info);
-    qemu_println!("Panic occurred: \n{:#?}", info);
+    log!("Panic orccurred: \n{:#?}", info);
     loop {}
 }
