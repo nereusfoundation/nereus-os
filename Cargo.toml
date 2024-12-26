@@ -17,3 +17,4 @@ thiserror-no-std = "2.0.2"
 framebuffer = { path = "../graphics-core/framebuffer" }
 fonts = { path = "../graphics-core/fonts" }
 sync = { path = "../sync" }
+hal = { path = "../hal" }

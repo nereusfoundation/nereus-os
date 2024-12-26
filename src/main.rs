@@ -34,9 +34,7 @@ fn main() -> Status {
 
             LOGGER.initialize(writer);
 
-            log!("Hello Logging so cool!");
-
-            panic!("OH NO!!!");
+            log!("Initialize framebuffer OK")
         }
         // this won't always be shown in the console, because stdout may not be available in some cases
         Err(err) => error!("Bootloader: Failed to initialize framebuffer: {}", err),
