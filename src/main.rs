@@ -1,3 +1,4 @@
+#![feature(vec_into_raw_parts)]
 #![no_main]
 #![no_std]
 
@@ -5,14 +6,20 @@ extern crate alloc;
 
 use core::panic::PanicInfo;
 
+use alloc::vec::Vec;
+use boot::MemoryType;
+use bootinfo::PAGE_SIZE;
 use framebuffer::{color::Color, raw::write::RawWriter};
 use graphics::{
     initialize_framebuffer, logger::LOGGER, parse_psf_font, BG_COLOR, CAPTION, FG_COLOR_CAPTION,
     FG_COLOR_ERROR, FG_COLOR_INFO, FG_COLOR_LOG, FG_COLOR_OK,
 };
 use log::{error, info};
-use memory::KERNEL_STACK_SIZE;
-use uefi::prelude::*;
+use memory::{
+    NebulaMemoryDescriptor, NebulaMemoryMap, NebulaMemoryType, KERNEL_CODE, KERNEL_DATA,
+    KERNEL_STACK, KERNEL_STACK_SIZE, MMAP_META_DATA, PSF_DATA,
+};
+use uefi::{mem::memory_map::MemoryMap, prelude::*};
 
 mod error;
 mod file;
@@ -32,6 +39,9 @@ fn main() -> Status {
             framebuffer.fill(Color::new(0, 0, 0));
             let font = parse_psf_font(PSF_FILE_NAME).unwrap();
 
+            let addr = framebuffer.ptr() as *mut u8 as u64;
+            let page_num = framebuffer.ptr().len().div_ceil(PAGE_SIZE);
+
             let writer = RawWriter::new(font, framebuffer, FG_COLOR_LOG, BG_COLOR);
 
             LOGGER.initialize(writer);
@@ -40,6 +50,8 @@ fn main() -> Status {
 
             log!(FG_COLOR_LOG, " [LOG  ]: Initializing framebuffer ");
             logln!(FG_COLOR_OK, "OK");
+
+            loginfo!("Framebuffer address: {:#x}, pages: {:#x}", addr, page_num);
 
             // get kernel file from disk
             let kernel_data = validate!(
@@ -72,22 +84,61 @@ fn main() -> Status {
                 kernel_stack.num_pages()
             );
 
-            let (bootinfo_ptr, bootinfo_pages) = validate!(
+            let (bootinfo_ptr, mmap_descriptors) = validate!(
                 memory::allocate_bootinfo(),
                 "Allocating memory for kernel bootinfo"
             );
             loginfo!(
-                "Kernel boot info start: {:#x}, pages: {:#x}",
-                bootinfo_ptr.as_ptr() as u64,
-                bootinfo_pages
+                "Kernel boot info address: {:#x}",
+                bootinfo_ptr.as_ptr() as u64
             );
+            log!(FG_COLOR_LOG, " [LOG  ]: Exiting boot services ");
+            drop_boot_services(mmap_descriptors);
+            logln!(FG_COLOR_OK, "OK");
         }
         // this won't always be shown in the console, because stdout may not be available in some cases
         Err(err) => error!("Bootloader: Failed to initialize framebuffer: {}", err),
     }
 
-    boot::stall(10_000_000);
-    Status::SUCCESS
+    loop {}
+}
+
+fn drop_boot_services(mut mmap_descriptors: Vec<NebulaMemoryDescriptor>) -> NebulaMemoryMap {
+    let mmap = unsafe { boot::exit_boot_services(KERNEL_DATA) };
+
+    // convert memory map
+    mmap.entries().for_each(|desc| {
+        let phys_end = desc.phys_start + desc.page_count * PAGE_SIZE as u64;
+
+        let r#type = if desc.phys_start < 0x1000 {
+            NebulaMemoryType::Reserved
+        } else {
+            match desc.ty {
+                MemoryType::CONVENTIONAL
+                | MemoryType::BOOT_SERVICES_CODE
+                | MemoryType::BOOT_SERVICES_DATA
+                | MMAP_META_DATA => NebulaMemoryType::Available,
+                PSF_DATA => NebulaMemoryType::FontData,
+                KERNEL_CODE => NebulaMemoryType::KernelCode,
+                KERNEL_DATA => NebulaMemoryType::KernelData,
+                KERNEL_STACK => NebulaMemoryType::KernelStack,
+                _ => NebulaMemoryType::Reserved,
+            }
+        };
+
+        mmap_descriptors.push(NebulaMemoryDescriptor {
+            phys_start: desc.phys_start,
+            phys_end,
+            num_pages: desc.page_count,
+            r#type,
+        });
+    });
+
+    let (ptr, len, _cap) = mmap_descriptors.into_raw_parts();
+    NebulaMemoryMap {
+        descriptors: ptr,
+        descriptors_len: len as u64,
+    }
 }
 
 #[panic_handler]

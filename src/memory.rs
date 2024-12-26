@@ -1,16 +1,24 @@
 use core::ptr::NonNull;
 
-use bootinfo::BootInfo;
-use hal::{PhysicalAddress, PAGE_SIZE};
-use uefi::boot::{self, AllocateType, MemoryType};
+use alloc::vec::Vec;
+use bootinfo::{BootInfo, PhysicalAddress, PAGE_SIZE};
+use uefi::{
+    boot::{self, AllocateType, MemoryType},
+    mem::memory_map::MemoryMap,
+};
 
 // custom memory types of the NebulaLoader
 pub(crate) const PSF_DATA: MemoryType = MemoryType::custom(0x8000_0000);
 pub(crate) const KERNEL_CODE: MemoryType = MemoryType::custom(0x8000_0001);
 pub(crate) const KERNEL_STACK: MemoryType = MemoryType::custom(0x8000_0002);
 pub(crate) const KERNEL_DATA: MemoryType = MemoryType::custom(0x8000_0003);
+pub(crate) const MMAP_META_DATA: MemoryType = MemoryType::custom(0x8000_0004);
 
 pub(crate) const KERNEL_STACK_SIZE: usize = 1024 * 1024; // 1 MB
+
+pub(crate) type NebulaMemoryMap = bootinfo::MemoryMap;
+pub(crate) type NebulaMemoryDescriptor = bootinfo::MemoryDescriptor;
+pub(crate) type NebulaMemoryType = bootinfo::MemoryType;
 
 #[derive(Copy, Clone, Debug)]
 pub(crate) struct KernelStack {
@@ -52,10 +60,18 @@ pub(crate) fn allocate_kernel_stack(bytes: usize) -> Result<KernelStack, uefi::E
     })
 }
 
-/// Allocate page-sized memory for kernel bootinfo
-pub(crate) fn allocate_bootinfo() -> Result<(NonNull<BootInfo>, usize), uefi::Error> {
+/// Allocate page-sized memory for kernel bootinfo and set up vector of memory map descriptors
+pub(crate) fn allocate_bootinfo(
+) -> Result<(NonNull<BootInfo>, Vec<NebulaMemoryDescriptor>), uefi::Error> {
     let num_pages = size_of::<BootInfo>().div_ceil(PAGE_SIZE);
 
-    boot::allocate_pages(AllocateType::AnyPages, KERNEL_DATA, num_pages)
-        .map(|bootinfo| (bootinfo.cast::<BootInfo>(), num_pages))
+    let ptr = boot::allocate_pages(AllocateType::AnyPages, KERNEL_DATA, num_pages)
+        .map(|bootinfo| bootinfo.cast::<BootInfo>())?;
+
+    // get uefi memory map meta data to allocate a sufficient number of bytes for the nebula memory map in advance
+    let size = boot::memory_map(MMAP_META_DATA)?.meta().map_size;
+
+    let descriptors = Vec::with_capacity(size);
+
+    Ok((ptr, descriptors))
 }
