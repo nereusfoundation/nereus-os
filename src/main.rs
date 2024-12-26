@@ -11,6 +11,7 @@ use graphics::{
     FG_COLOR_ERROR, FG_COLOR_INFO, FG_COLOR_LOG, FG_COLOR_OK,
 };
 use log::{error, info};
+use memory::KERNEL_STACK_SIZE;
 use uefi::prelude::*;
 
 mod error;
@@ -37,7 +38,7 @@ fn main() -> Status {
 
             logln!(FG_COLOR_CAPTION, "{}", CAPTION);
 
-            log!(FG_COLOR_LOG, " [LOG  ]: Initialize framebuffer ");
+            log!(FG_COLOR_LOG, " [LOG  ]: Initializing framebuffer ");
             logln!(FG_COLOR_OK, "OK");
 
             // get kernel file from disk
@@ -58,6 +59,17 @@ fn main() -> Status {
                 kernel_elf.entry(),
                 kernel_elf.base(),
                 kernel_elf.num_pages()
+            );
+
+            let kernel_stack = validate!(
+                memory::allocate_kernel_stack(KERNEL_STACK_SIZE),
+                "Allocating memory for kernel stack"
+            );
+            loginfo!(
+                "Kernel stack top: {:#x}, bottom: {:#x}, pages: {:#x}",
+                kernel_stack.top(),
+                kernel_stack.bottom(),
+                kernel_stack.num_pages()
             );
         }
         // this won't always be shown in the console, because stdout may not be available in some cases
