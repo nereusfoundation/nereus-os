@@ -7,6 +7,7 @@ extern crate alloc;
 use core::panic::PanicInfo;
 
 use alloc::vec::Vec;
+use bitmap_allocator::BitMapAllocator;
 use boot::MemoryType;
 use bootinfo::PAGE_SIZE;
 use framebuffer::{color::Color, raw::write::RawWriter};
@@ -93,8 +94,26 @@ fn main() -> Status {
                 bootinfo_ptr.as_ptr() as u64
             );
             log!(FG_COLOR_LOG, " [LOG  ]: Exiting boot services ");
-            drop_boot_services(mmap_descriptors);
+            let memory_map = drop_boot_services(mmap_descriptors);
             logln!(FG_COLOR_OK, "OK");
+
+            memory_map.descriptors().iter().for_each(|desc| {
+                qemu_print::qemu_println!(
+                    "addr: {:#x}, ty: {:?}, pages: {:#x}",
+                    desc.phys_start,
+                    desc.r#type,
+                    desc.num_pages
+                );
+            });
+
+            let pmm = validate!(
+                BitMapAllocator::try_new(memory_map),
+                "Initializing physical memory manager"
+            );
+
+            loginfo!("Free memory: {} bytes", pmm.free_memory());
+            loginfo!("Used memory: {} bytes", pmm.used_memory());
+            loginfo!("Reserved memory: {} bytes", pmm.reserved_memory());
         }
         // this won't always be shown in the console, because stdout may not be available in some cases
         Err(err) => error!("Bootloader: Failed to initialize framebuffer: {}", err),
@@ -106,9 +125,20 @@ fn main() -> Status {
 fn drop_boot_services(mut mmap_descriptors: Vec<NebulaMemoryDescriptor>) -> NebulaMemoryMap {
     let mmap = unsafe { boot::exit_boot_services(KERNEL_DATA) };
 
+    let mut first_addr = u64::MAX;
+    let mut last_addr = u64::MIN;
+
     // convert memory map
     mmap.entries().for_each(|desc| {
         let phys_end = desc.phys_start + desc.page_count * PAGE_SIZE as u64;
+
+        if desc.phys_start < first_addr {
+            first_addr = desc.phys_start;
+        }
+
+        if phys_end > last_addr {
+            last_addr = phys_end;
+        }
 
         let r#type = if desc.phys_start < 0x1000 {
             NebulaMemoryType::Reserved
@@ -122,6 +152,9 @@ fn drop_boot_services(mut mmap_descriptors: Vec<NebulaMemoryDescriptor>) -> Nebu
                 KERNEL_CODE => NebulaMemoryType::KernelCode,
                 KERNEL_DATA => NebulaMemoryType::KernelData,
                 KERNEL_STACK => NebulaMemoryType::KernelStack,
+                MemoryType::ACPI_RECLAIM | MemoryType::ACPI_NON_VOLATILE => {
+                    NebulaMemoryType::AcpiData
+                }
                 _ => NebulaMemoryType::Reserved,
             }
         };
@@ -138,6 +171,8 @@ fn drop_boot_services(mut mmap_descriptors: Vec<NebulaMemoryDescriptor>) -> Nebu
     NebulaMemoryMap {
         descriptors: ptr,
         descriptors_len: len as u64,
+        first_addr,
+        last_addr,
     }
 }
 
