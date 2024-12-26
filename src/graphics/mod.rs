@@ -2,7 +2,7 @@ use fonts::psf::{
     header::{Header, PSF1Header, PSF2Header},
     RawFont, PSF1_MAGIC, PSF2_MAGIC,
 };
-use framebuffer::raw::RawFrameBuffer;
+use framebuffer::{color::Color, raw::RawFrameBuffer};
 use uefi::{boot, proto::console::gop::GraphicsOutput};
 
 use crate::{
@@ -11,6 +11,11 @@ use crate::{
 };
 
 pub(crate) mod logger;
+
+pub(crate) const FG_COLOR_INFO: Color = Color::new(255, 255, 255);
+pub(crate) const FG_COLOR_ERROR: Color = Color::new(255, 0, 0);
+pub(crate) const FG_COLOR_OK: Color = Color::new(0, 255, 100);
+pub(crate) const BG_COLOR: Color = Color::new(0, 0, 0);
 
 /// Set up GOP framebuffer
 pub(crate) fn initialize_framebuffer() -> Result<RawFrameBuffer, FrameBufferErrorExt> {
