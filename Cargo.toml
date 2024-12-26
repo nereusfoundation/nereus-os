@@ -23,3 +23,4 @@ framebuffer = { path = "../graphics-core/framebuffer" }
 fonts = { path = "../graphics-core/fonts" }
 sync = { path = "../sync" }
 hal = { path = "../hal" }
+bootinfo = { path = "../bootinfo" }

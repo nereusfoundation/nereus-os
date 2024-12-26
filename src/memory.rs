@@ -1,3 +1,6 @@
+use core::ptr::NonNull;
+
+use bootinfo::BootInfo;
 use hal::{PhysicalAddress, PAGE_SIZE};
 use uefi::boot::{self, AllocateType, MemoryType};
 
@@ -5,6 +8,7 @@ use uefi::boot::{self, AllocateType, MemoryType};
 pub(crate) const PSF_DATA: MemoryType = MemoryType::custom(0x8000_0000);
 pub(crate) const KERNEL_CODE: MemoryType = MemoryType::custom(0x8000_0001);
 pub(crate) const KERNEL_STACK: MemoryType = MemoryType::custom(0x8000_0002);
+pub(crate) const KERNEL_DATA: MemoryType = MemoryType::custom(0x8000_0003);
 
 pub(crate) const KERNEL_STACK_SIZE: usize = 1024 * 1024; // 1 MB
 
@@ -46,4 +50,12 @@ pub(crate) fn allocate_kernel_stack(bytes: usize) -> Result<KernelStack, uefi::E
         top,
         num_pages,
     })
+}
+
+/// Allocate page-sized memory for kernel bootinfo
+pub(crate) fn allocate_bootinfo() -> Result<(NonNull<BootInfo>, usize), uefi::Error> {
+    let num_pages = size_of::<BootInfo>().div_ceil(PAGE_SIZE);
+
+    boot::allocate_pages(AllocateType::AnyPages, KERNEL_DATA, num_pages)
+        .map(|bootinfo| (bootinfo.cast::<BootInfo>(), num_pages))
 }

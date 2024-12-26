@@ -62,8 +62,6 @@ impl Elf {
 
         let num_pages = (dest_end as usize - dest_start as usize).div_ceil(PAGE_SIZE);
 
-        qemu_print::qemu_println!("deststart: {:#x}, num pages: {:#x}", dest_start, num_pages);
-
         // allocate file data
         assert_eq!(
             dest_start,

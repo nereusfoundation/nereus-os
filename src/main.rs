@@ -71,6 +71,16 @@ fn main() -> Status {
                 kernel_stack.bottom(),
                 kernel_stack.num_pages()
             );
+
+            let (bootinfo_ptr, bootinfo_pages) = validate!(
+                memory::allocate_bootinfo(),
+                "Allocating memory for kernel bootinfo"
+            );
+            loginfo!(
+                "Kernel boot info start: {:#x}, pages: {:#x}",
+                bootinfo_ptr.as_ptr() as u64,
+                bootinfo_pages
+            );
         }
         // this won't always be shown in the console, because stdout may not be available in some cases
         Err(err) => error!("Bootloader: Failed to initialize framebuffer: {}", err),
