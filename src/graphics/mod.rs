@@ -8,6 +8,7 @@ use uefi::{boot, proto::console::gop::GraphicsOutput};
 use crate::{
     error::{FrameBufferErrorExt, PsfParseError},
     file,
+    memory::PSF_DATA,
 };
 
 pub(crate) mod logger;
@@ -82,8 +83,8 @@ pub(crate) fn parse_psf_font(fontname: &'static str) -> Result<RawFont, PsfParse
         }
 
         // allocate memory for entire font data
-        let font_address = boot::allocate_pool(boot::MemoryType::LOADER_DATA, total_size)
-            .map_err(PsfParseError::from)?;
+        let font_address =
+            boot::allocate_pool(PSF_DATA, total_size).map_err(PsfParseError::from)?;
 
         // copy header data to allocated memory
         unsafe {
@@ -131,8 +132,8 @@ pub(crate) fn parse_psf_font(fontname: &'static str) -> Result<RawFont, PsfParse
         }
 
         // allocate memory for entire font data
-        let font_address = boot::allocate_pool(boot::MemoryType::LOADER_DATA, total_size)
-            .map_err(PsfParseError::from)?;
+        let font_address =
+            boot::allocate_pool(PSF_DATA, total_size).map_err(PsfParseError::from)?;
 
         // copy header data to allocated memory
         unsafe {

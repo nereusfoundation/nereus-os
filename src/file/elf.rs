@@ -3,9 +3,9 @@ use core::slice;
 use alloc::vec::Vec;
 use goblin::elf::program_header::PT_LOAD;
 use hal::{PhysicalAddress, VirtualAddress, PAGE_SIZE};
-use uefi::boot::{self, MemoryType};
+use uefi::boot;
 
-use crate::error::ElfParseError;
+use crate::{error::ElfParseError, memory::KERNEL_CODE};
 
 /// Executable Linkable Format wrapper for parsing elfs
 #[derive(Copy, Clone, Debug)]
@@ -69,7 +69,7 @@ impl Elf {
             dest_start,
             boot::allocate_pages(
                 boot::AllocateType::Address(dest_start),
-                MemoryType::LOADER_DATA,
+                KERNEL_CODE,
                 num_pages,
             )
             .map_err(ElfParseError::from)?

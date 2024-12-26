@@ -12,9 +12,11 @@ use graphics::{
 };
 use log::{error, info};
 use uefi::prelude::*;
+
 mod error;
 mod file;
 mod graphics;
+mod memory;
 
 const PSF_FILE_NAME: &str = "font.psf";
 const KERNEL_FILE_NAME: &str = "kernel.elf";
