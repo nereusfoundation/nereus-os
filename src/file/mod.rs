@@ -6,6 +6,9 @@ use uefi::{
     proto::media::fs::SimpleFileSystem,
     CString16,
 };
+
+pub(crate) mod elf;
+
 /// Retrieve file data from filesystem of given file name
 pub(crate) fn get_file_data(filename: &'static str) -> Result<Vec<u8>, FileParseError> {
     let fs: ScopedProtocol<SimpleFileSystem> =

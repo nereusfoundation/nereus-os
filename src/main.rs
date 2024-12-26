@@ -17,6 +17,7 @@ mod file;
 mod graphics;
 
 const PSF_FILE_NAME: &str = "font.psf";
+const KERNEL_FILE_NAME: &str = "kernel.elf";
 
 #[entry]
 fn main() -> Status {
@@ -34,6 +35,30 @@ fn main() -> Status {
 
             log!(FG_COLOR_INFO, " [LOG  ]: Initialize framebuffer ");
             logln!(FG_COLOR_OK, "OK");
+
+            // get kernel file from disk
+            let kernel_data = validate!(
+                file::get_file_data(KERNEL_FILE_NAME),
+                "Retrieving kernel file image"
+            );
+
+            logln!(
+                FG_COLOR_INFO,
+                " [INFO ]: Kernel size: {} bytes",
+                kernel_data.len()
+            );
+
+            let kernel_elf = validate!(
+                file::elf::Elf::try_new(kernel_data),
+                "Loading kernel image into memory"
+            );
+            logln!(
+                FG_COLOR_INFO,
+                " [INFO ]: Kernel entry: {:#x}, file base: {:#x}, pages: {:#x}",
+                kernel_elf.entry(),
+                kernel_elf.base(),
+                kernel_elf.num_pages()
+            );
         }
         // this won't always be shown in the console, because stdout may not be available in some cases
         Err(err) => error!("Bootloader: Failed to initialize framebuffer: {}", err),

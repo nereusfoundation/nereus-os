@@ -21,17 +21,21 @@ macro_rules! logln {
 
 #[macro_export]
 macro_rules! validate {
-    ($result:expr, $msg:expr) => {
+    ($result:expr, $msg:expr) => {{
         log!(FG_COLOR_INFO, " [LOG  ]: {}", $msg);
-        if let Err(err) = $result {
-            logln!();
-            log!(FG_COLOR_ERROR, " [ERROR]: ");
-            logln!(FG_COLOR_INFO, "{}", err);
-            return Status::UNSUPPORTED;
+        match $result {
+            Ok(value) => {
+                logln!(FG_COLOR_OK, " OK");
+                value
+            }
+            Err(err) => {
+                logln!();
+                log!(FG_COLOR_ERROR, " [ERROR]: ");
+                logln!(FG_COLOR_INFO, "{}", err);
+                return Status::UNSUPPORTED;
+            }
         }
-
-        logln!(FG_COLOR_OK, " OK");
-    };
+    }};
 }
 
 #[doc(hidden)]

@@ -33,3 +33,13 @@ pub(crate) enum FileParseError {
     #[error("Invalid filename: {0}")]
     InvalidFile(&'static str),
 }
+
+#[derive(Debug, thiserror_no_std::Error)]
+pub(crate) enum ElfParseError {
+    #[error("Uefi error: {0}")]
+    Uefi(#[from] uefi::Error),
+    #[error("Elf parsing error: {0}")]
+    Goblin(#[from] goblin::error::Error),
+    #[error("Invalid ELF-format, 64-bit is required")]
+    InvalidFormat,
+}
