@@ -7,8 +7,8 @@ use core::panic::PanicInfo;
 
 use framebuffer::{color::Color, raw::write::RawWriter};
 use graphics::{
-    initialize_framebuffer, logger::LOGGER, parse_psf_font, BG_COLOR, FG_COLOR_ERROR,
-    FG_COLOR_INFO, FG_COLOR_OK,
+    initialize_framebuffer, logger::LOGGER, parse_psf_font, BG_COLOR, CAPTION, FG_COLOR_CAPTION,
+    FG_COLOR_ERROR, FG_COLOR_INFO, FG_COLOR_LOG, FG_COLOR_OK,
 };
 use log::{error, info};
 use uefi::prelude::*;
@@ -29,11 +29,13 @@ fn main() -> Status {
             framebuffer.fill(Color::new(0, 0, 0));
             let font = parse_psf_font(PSF_FILE_NAME).unwrap();
 
-            let writer = RawWriter::new(font, framebuffer, FG_COLOR_INFO, BG_COLOR);
+            let writer = RawWriter::new(font, framebuffer, FG_COLOR_LOG, BG_COLOR);
 
             LOGGER.initialize(writer);
 
-            log!(FG_COLOR_INFO, " [LOG  ]: Initialize framebuffer ");
+            logln!(FG_COLOR_CAPTION, "{}", CAPTION);
+
+            log!(FG_COLOR_LOG, " [LOG  ]: Initialize framebuffer ");
             logln!(FG_COLOR_OK, "OK");
 
             // get kernel file from disk
@@ -42,19 +44,15 @@ fn main() -> Status {
                 "Retrieving kernel file image"
             );
 
-            logln!(
-                FG_COLOR_INFO,
-                " [INFO ]: Kernel size: {} bytes",
-                kernel_data.len()
-            );
+            loginfo!("Kernel size: {} bytes", kernel_data.len());
 
             let kernel_elf = validate!(
                 file::elf::Elf::try_new(kernel_data),
                 "Loading kernel image into memory"
             );
-            logln!(
-                FG_COLOR_INFO,
-                " [INFO ]: Kernel entry: {:#x}, file base: {:#x}, pages: {:#x}",
+
+            loginfo!(
+                "Kernel entry: {:#x}, file base: {:#x}, pages: {:#x}",
                 kernel_elf.entry(),
                 kernel_elf.base(),
                 kernel_elf.num_pages()
@@ -72,6 +70,6 @@ fn main() -> Status {
 fn panic(info: &PanicInfo) -> ! {
     error!("Panic occurred: \n{:#?}", info);
     log!(FG_COLOR_ERROR, " [ERROR]: ");
-    logln!(FG_COLOR_INFO, "Panic orccurred: \n{:#?}", info);
+    logln!(FG_COLOR_LOG, "Panic orccurred: \n{:#?}", info);
     loop {}
 }
