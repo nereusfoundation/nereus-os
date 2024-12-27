@@ -27,14 +27,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b048fb63fd8b5923fc5aa7b340d8e156aec7ec02f0c78fa8a6ddc2613f6f71de"
 
 [[package]]
-name = "bitmap-allocator"
-version = "0.1.0"
-dependencies = [
- "bootinfo",
- "thiserror-no-std",
-]
-
-[[package]]
 name = "bootinfo"
 version = "0.1.0"
 dependencies = [
@@ -108,6 +100,15 @@ name = "log"
 version = "0.4.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a7a70ba024b9dc04c27ea2f0c0548feb474ec5c54bba33a7f72f873a39d07b24"
+
+[[package]]
+name = "mem"
+version = "0.1.0"
+dependencies = [
+ "bitflags 2.6.0",
+ "bootinfo",
+ "thiserror-no-std",
+]
 
 [[package]]
 name = "plain"
@@ -291,13 +292,13 @@ dependencies = [
 name = "uefi-loader"
 version = "0.1.0"
 dependencies = [
- "bitmap-allocator",
  "bootinfo",
  "fonts",
  "framebuffer",
  "goblin",
  "hal",
  "log",
+ "mem",
  "qemu_print",
  "sync",
  "thiserror-no-std",

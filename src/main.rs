@@ -7,7 +7,6 @@ extern crate alloc;
 use core::panic::PanicInfo;
 
 use alloc::vec::Vec;
-use bitmap_allocator::BitMapAllocator;
 use boot::MemoryType;
 use bootinfo::PAGE_SIZE;
 use framebuffer::{color::Color, raw::write::RawWriter};
@@ -16,6 +15,7 @@ use graphics::{
     FG_COLOR_ERROR, FG_COLOR_INFO, FG_COLOR_LOG, FG_COLOR_OK,
 };
 use log::{error, info};
+use mem::bitmap_allocator::BitMapAllocator;
 use memory::{
     NebulaMemoryDescriptor, NebulaMemoryMap, NebulaMemoryType, KERNEL_CODE, KERNEL_DATA,
     KERNEL_STACK, KERNEL_STACK_SIZE, MMAP_META_DATA, PSF_DATA,
@@ -96,15 +96,6 @@ fn main() -> Status {
             log!(FG_COLOR_LOG, " [LOG  ]: Exiting boot services ");
             let memory_map = drop_boot_services(mmap_descriptors);
             logln!(FG_COLOR_OK, "OK");
-
-            memory_map.descriptors().iter().for_each(|desc| {
-                qemu_print::qemu_println!(
-                    "addr: {:#x}, ty: {:?}, pages: {:#x}",
-                    desc.phys_start,
-                    desc.r#type,
-                    desc.num_pages
-                );
-            });
 
             let pmm = validate!(
                 BitMapAllocator::try_new(memory_map),
