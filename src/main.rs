@@ -15,10 +15,10 @@ use graphics::{
     FG_COLOR_ERROR, FG_COLOR_INFO, FG_COLOR_LOG, FG_COLOR_OK,
 };
 use log::{error, info};
-use mem::bitmap_allocator::BitMapAllocator;
+use mem::{bitmap_allocator::BitMapAllocator, KERNEL_STACK_SIZE};
 use memory::{
     NebulaMemoryDescriptor, NebulaMemoryMap, NebulaMemoryType, KERNEL_CODE, KERNEL_DATA,
-    KERNEL_STACK, KERNEL_STACK_SIZE, MMAP_META_DATA, PSF_DATA,
+    KERNEL_STACK, MMAP_META_DATA, PSF_DATA,
 };
 use uefi::{mem::memory_map::MemoryMap, prelude::*};
 
@@ -89,6 +89,8 @@ fn main() -> Status {
                 memory::allocate_bootinfo(),
                 "Allocating memory for kernel bootinfo"
             );
+
+
             loginfo!(
                 "Kernel boot info address: {:#x}",
                 bootinfo_ptr.as_ptr() as u64
@@ -96,7 +98,10 @@ fn main() -> Status {
             log!(FG_COLOR_LOG, " [LOG  ]: Exiting boot services ");
             let memory_map = drop_boot_services(mmap_descriptors);
             logln!(FG_COLOR_OK, "OK");
-
+            
+            // set memory map of boot info to the correct one
+            unsafe { bootinfo_ptr.as_ptr().as_mut().expect("bootinfo ptr must be valid").mmap = memory_map; }
+            
             let pmm = validate!(
                 BitMapAllocator::try_new(memory_map),
                 "Initializing physical memory manager"
@@ -105,6 +110,15 @@ fn main() -> Status {
             loginfo!("Free memory: {} bytes", pmm.free_memory());
             loginfo!("Used memory: {} bytes", pmm.used_memory());
             loginfo!("Reserved memory: {} bytes", pmm.reserved_memory());
+            
+            log!(FG_COLOR_LOG, " [LOG  ]: Initializing higher-half kernel address space ");
+            
+            memory::initialize_address_space(bootinfo_ptr.as_ptr(), pmm, kernel_stack).expect("Error during `initialize_address_space`");
+            
+            logln!(FG_COLOR_OK, "OK");
+            loginfo!("Switchted to kernel page mappings");
+
+            // todo: assign writer to bootinfo
         }
         // this won't always be shown in the console, because stdout may not be available in some cases
         Err(err) => error!("Bootloader: Failed to initialize framebuffer: {}", err),
@@ -117,8 +131,10 @@ fn drop_boot_services(mut mmap_descriptors: Vec<NebulaMemoryDescriptor>) -> Nebu
     let mmap = unsafe { boot::exit_boot_services(KERNEL_DATA) };
 
     let mut first_addr = u64::MAX;
+    let mut first_available_addr = first_addr;
     let mut last_addr = u64::MIN;
-
+    let mut last_available_addr = last_addr;
+        
     // convert memory map
     mmap.entries().for_each(|desc| {
         let phys_end = desc.phys_start + desc.page_count * PAGE_SIZE as u64;
@@ -136,19 +152,27 @@ fn drop_boot_services(mut mmap_descriptors: Vec<NebulaMemoryDescriptor>) -> Nebu
         } else {
             match desc.ty {
                 MemoryType::CONVENTIONAL
-                | MemoryType::BOOT_SERVICES_CODE
-                | MemoryType::BOOT_SERVICES_DATA
-                | MMAP_META_DATA => NebulaMemoryType::Available,
-                PSF_DATA => NebulaMemoryType::FontData,
+                                | MMAP_META_DATA => NebulaMemoryType::Available,
                 KERNEL_CODE => NebulaMemoryType::KernelCode,
-                KERNEL_DATA => NebulaMemoryType::KernelData,
+                KERNEL_DATA | PSF_DATA => NebulaMemoryType::KernelData,
                 KERNEL_STACK => NebulaMemoryType::KernelStack,
                 MemoryType::ACPI_RECLAIM | MemoryType::ACPI_NON_VOLATILE => {
                     NebulaMemoryType::AcpiData
-                }
+                },
+                MemoryType::LOADER_CODE | MemoryType::LOADER_DATA | MemoryType::BOOT_SERVICES_CODE
+                | MemoryType::BOOT_SERVICES_DATA
+=> NebulaMemoryType::Loader,
                 _ => NebulaMemoryType::Reserved,
             }
         };
+
+        if desc.phys_start < first_available_addr && r#type == NebulaMemoryType::Available {
+            first_available_addr = desc.phys_start;
+        }
+
+        if phys_end > last_available_addr && r#type == NebulaMemoryType::Available {
+            last_available_addr = phys_end;
+        }
 
         mmap_descriptors.push(NebulaMemoryDescriptor {
             phys_start: desc.phys_start,
@@ -163,13 +187,15 @@ fn drop_boot_services(mut mmap_descriptors: Vec<NebulaMemoryDescriptor>) -> Nebu
         descriptors: ptr,
         descriptors_len: len as u64,
         first_addr,
+        first_available_addr,
         last_addr,
+        last_available_addr,
     }
 }
 
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
-    error!("Panic occurred: \n{:#?}", info);
+    qemu_print::qemu_println!("Panic occurred: \n{:#?}", info);
     log!(FG_COLOR_ERROR, " [ERROR]: ");
     logln!(FG_COLOR_LOG, "Panic orccurred: \n{:#?}", info);
     loop {}

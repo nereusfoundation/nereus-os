@@ -1,4 +1,5 @@
 use core::fmt::Write;
+use bootinfo::VirtualAddress;
 use framebuffer::{color::Color, safe::Writer};
 use hal::interrupts::without_interrupts;
 
@@ -57,4 +58,28 @@ pub fn _log(args: core::fmt::Arguments, fg: Color) {
             writer.set_colors(old_fg, old_bg);
         }
     });
+}
+
+/// Make logger available after switching to new paging scheme
+///
+/// # Safety
+/// Caller must guarantee that the offset is valid. This function must be called with a valid
+/// logger available.
+pub unsafe fn update_font(offset: VirtualAddress) {
+    let mut locked = LOGGER.locked();
+    let writer = locked.get_mut().expect("update font requires valid logger");
+    let old_ptr = writer.font().glyph_buffer_address();
+    let new_ptr = old_ptr as u64 + offset;
+
+    writer.font().update_glyph_buffer_ptr(new_ptr as *const u8);
+}
+
+/// Get Framebuffer Base and page count
+///
+/// # Safety
+/// The caller must guarantee that the logger is avaiable when calling this function.
+pub unsafe fn get_fb() -> (u64, usize) {
+    let mut locked = LOGGER.locked();
+    let writer = locked.get_mut().expect("getting framebuffer requires valid logger");
+    writer.fb_meta()
 }
