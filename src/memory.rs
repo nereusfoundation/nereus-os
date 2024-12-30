@@ -1,9 +1,9 @@
-use core::{ptr::{self, NonNull}, arch::asm};
+use core::{arch::asm, ptr::{self, NonNull}};
 
 use alloc::vec::Vec;
-use bootinfo::{BootInfo, PhysicalAddress, PAGE_SIZE};
+use bootinfo::BootInfo;
 use hal::msr::{efer::Efer, ModelSpecificRegister};
-use mem::{bitmap_allocator::BitMapAllocator, error::FrameAllocatorError, paging::{ptm::PageTableManager, PageEntryFlags, PageTable}, KERNEL_CODE_VIRTUAL, KERNEL_DATA_VIRTUAL, KERNEL_STACK_SIZE, KERNEL_STACK_VIRTUAL};
+use mem::{map, PhysicalAddress, PAGE_SIZE, bitmap_allocator::BitMapAllocator, error::FrameAllocatorError, paging::{ptm::PageTableManager, PageEntryFlags, PageTable}, KERNEL_CODE_VIRTUAL, KERNEL_DATA_VIRTUAL, KERNEL_STACK_SIZE, KERNEL_STACK_VIRTUAL};
 use uefi::{
     boot::{self, AllocateType, MemoryType}, mem::memory_map::MemoryMap
 };
@@ -18,9 +18,9 @@ pub(crate) const KERNEL_DATA: MemoryType = MemoryType::custom(0x8000_0003);
 pub(crate) const MMAP_META_DATA: MemoryType = MemoryType::custom(0x8000_0004);
 
 
-pub(crate) type NebulaMemoryMap = bootinfo::MemoryMap;
-pub(crate) type NebulaMemoryDescriptor = bootinfo::MemoryDescriptor;
-pub(crate) type NebulaMemoryType = bootinfo::MemoryType;
+pub(crate) type NebulaMemoryMap = map::MemoryMap;
+pub(crate) type NebulaMemoryDescriptor = map::MemoryDescriptor;
+pub(crate) type NebulaMemoryType = map::MemoryType;
 
 #[derive(Copy, Clone, Debug)]
 pub(crate) struct KernelStack {
@@ -109,7 +109,6 @@ pub(crate) fn initialize_address_space(bootinfo: *mut BootInfo, mut pmm: BitMapA
 
     let first_stack_addr = first_addr(&[NebulaMemoryType::KernelStack], memory_map)?;
     let first_data_addr = first_addr(&[NebulaMemoryType::KernelData, NebulaMemoryType::AcpiData], memory_map)?;
-    let first_code_addr = first_addr(&[NebulaMemoryType::KernelCode], memory_map)?;
     
     // map kernel physical address space to canonical higher half (canonical lower half is reserved
     // for userspace)
@@ -122,7 +121,7 @@ pub(crate) fn initialize_address_space(bootinfo: *mut BootInfo, mut pmm: BitMapA
                 NebulaMemoryType::Available | NebulaMemoryType::Reserved => return Ok(()),
                 NebulaMemoryType::KernelStack => (KERNEL_STACK_VIRTUAL, desc.phys_start - first_stack_addr, PageEntryFlags::default_nx()),
                 NebulaMemoryType::KernelData | NebulaMemoryType::AcpiData => (KERNEL_DATA_VIRTUAL, desc.phys_start - first_data_addr, PageEntryFlags::default_nx()),
-                NebulaMemoryType::KernelCode => (KERNEL_CODE_VIRTUAL, desc.phys_start - first_code_addr, PageEntryFlags::default()),
+                NebulaMemoryType::KernelCode => (KERNEL_CODE_VIRTUAL, desc.phys_start, PageEntryFlags::default()),
                 // loader data, code pages will later be reclaimed by the kernel - must be
                 // identity-mapped for now
                 NebulaMemoryType::Loader => (0, desc.phys_start, PageEntryFlags::default())
@@ -159,10 +158,9 @@ pub(crate) fn initialize_address_space(bootinfo: *mut BootInfo, mut pmm: BitMapA
 
     // update bootinfo pointer (kernel data)
     let bootinfo = (KERNEL_DATA_VIRTUAL + bootinfo as u64 - first_data_addr) as *mut BootInfo; 
-    
     let stack = KernelStack {
         bottom: KERNEL_STACK_VIRTUAL,
-        top: KERNEL_STACK_VIRTUAL + KERNEL_STACK_SIZE as u64,
+        top: KERNEL_STACK_VIRTUAL + (KERNEL_STACK_SIZE - PAGE_SIZE) as u64,
         num_pages: old_stack.num_pages
     };
 

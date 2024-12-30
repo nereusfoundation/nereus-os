@@ -4,18 +4,17 @@
 
 extern crate alloc;
 
-use core::panic::PanicInfo;
+use core::{arch::asm, panic::PanicInfo};
 
 use alloc::vec::Vec;
 use boot::MemoryType;
-use bootinfo::PAGE_SIZE;
 use framebuffer::{color::Color, raw::write::RawWriter};
 use graphics::{
-    initialize_framebuffer, logger::LOGGER, parse_psf_font, BG_COLOR, CAPTION, FG_COLOR_CAPTION,
+    initialize_framebuffer, logger::{self, LOGGER}, parse_psf_font, BG_COLOR, CAPTION, FG_COLOR_CAPTION,
     FG_COLOR_ERROR, FG_COLOR_INFO, FG_COLOR_LOG, FG_COLOR_OK,
 };
 use log::{error, info};
-use mem::{bitmap_allocator::BitMapAllocator, KERNEL_STACK_SIZE};
+use mem::{bitmap_allocator::BitMapAllocator, KERNEL_STACK_SIZE, PAGE_SIZE};
 use memory::{
     NebulaMemoryDescriptor, NebulaMemoryMap, NebulaMemoryType, KERNEL_CODE, KERNEL_DATA,
     KERNEL_STACK, MMAP_META_DATA, PSF_DATA,
@@ -113,18 +112,28 @@ fn main() -> Status {
             
             log!(FG_COLOR_LOG, " [LOG  ]: Initializing higher-half kernel address space ");
             
-            memory::initialize_address_space(bootinfo_ptr.as_ptr(), pmm, kernel_stack).expect("Error during `initialize_address_space`");
+            let vas = memory::initialize_address_space(bootinfo_ptr.as_ptr(), pmm, kernel_stack).expect("Error during `initialize_address_space`");
             
             logln!(FG_COLOR_OK, "OK");
             loginfo!("Switchted to kernel page mappings");
+            loginfo!("Handing control to kernel...");
+            
+            let bootinfo_ref = unsafe { vas.bootinfo.as_mut().unwrap() };
+            
+            // assign ptm to bootinfo
+            bootinfo_ref.ptm = vas.manager;
 
-            // todo: assign writer to bootinfo
+            // assign writer to bootinfo
+            bootinfo_ref.writer = logger::take_writer().unwrap(); 
+            
+            unsafe { asm!( "mov rdi, {1}", "mov rsp, {2}", "jmp {0}", in(reg) kernel_elf.entry(), in(reg) vas.bootinfo,  in(reg) vas.stack.top(), options(noreturn)); }
+            
         }
         // this won't always be shown in the console, because stdout may not be available in some cases
         Err(err) => error!("Bootloader: Failed to initialize framebuffer: {}", err),
     }
 
-    loop {}
+    hal::hlt_loop();
 }
 
 fn drop_boot_services(mut mmap_descriptors: Vec<NebulaMemoryDescriptor>) -> NebulaMemoryMap {
@@ -195,8 +204,7 @@ fn drop_boot_services(mut mmap_descriptors: Vec<NebulaMemoryDescriptor>) -> Nebu
 
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
-    qemu_print::qemu_println!("Panic occurred: \n{:#?}", info);
     log!(FG_COLOR_ERROR, " [ERROR]: ");
     logln!(FG_COLOR_LOG, "Panic orccurred: \n{:#?}", info);
-    loop {}
+    hal::hlt_loop();
 }

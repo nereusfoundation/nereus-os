@@ -4,8 +4,3 @@ build-std-features = ["compiler-builtins-mem"]
 
 [build]
 target = "x86_64-unknown-uefi"
-
-[target.'cfg(target_os = "uefi")'.build]
-rustflags = [
-    "-C", "link-args=/LIBPATH:/path/to/target/dir -lmsr",
-]

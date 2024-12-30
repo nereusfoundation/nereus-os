@@ -1,7 +1,7 @@
 use core::slice;
 
 use alloc::vec::Vec;
-use bootinfo::{PhysicalAddress, VirtualAddress, PAGE_SIZE};
+use mem::{PhysicalAddress, VirtualAddress, PAGE_SIZE};
 use goblin::elf::program_header::PT_LOAD;
 use uefi::boot;
 
@@ -59,7 +59,6 @@ impl Elf {
             dest_start = dest_start.min(pheader.p_paddr);
             dest_end = dest_end.max(pheader.p_paddr + pheader.p_memsz);
         }
-
         let num_pages = (dest_end as usize - dest_start as usize).div_ceil(PAGE_SIZE);
 
         // allocate file data

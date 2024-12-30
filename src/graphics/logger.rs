@@ -1,6 +1,6 @@
 use core::fmt::Write;
-use bootinfo::VirtualAddress;
-use framebuffer::{color::Color, safe::Writer};
+use mem::VirtualAddress;
+use framebuffer::{color::Color, raw::write::RawWriter, safe::Writer};
 use hal::interrupts::without_interrupts;
 
 pub(crate) static LOGGER: Writer = Writer::new();
@@ -82,4 +82,10 @@ pub unsafe fn get_fb() -> (u64, usize) {
     let mut locked = LOGGER.locked();
     let writer = locked.get_mut().expect("getting framebuffer requires valid logger");
     writer.fb_meta()
+}
+
+/// Take the writer instance out of the logger
+pub fn take_writer() -> Option<RawWriter> {
+    let mut locked = LOGGER.locked();
+    locked.take()
 }
