@@ -112,10 +112,13 @@ fn main() -> Status {
             
             log!(FG_COLOR_LOG, " [LOG  ]: Initializing higher-half kernel address space ");
             
-            let vas = memory::initialize_address_space(bootinfo_ptr.as_ptr(), pmm, kernel_stack, fb_addr, fb_page_num).expect("Error during `initialize_address_space`");
+            let (vas, nx) = memory::initialize_address_space(bootinfo_ptr.as_ptr(), pmm, kernel_stack, fb_addr, fb_page_num).expect("Error during `initialize_address_space`");
             
             logln!(FG_COLOR_OK, "OK");
             loginfo!("Switchted to kernel page mappings");
+            if nx {
+                loginfo!("Enabled NO-EXECUTE CPU feature");
+            }
             loginfo!("Handing control to kernel...");
             
             let bootinfo_ref = unsafe { vas.bootinfo.as_mut().unwrap() };

@@ -87,8 +87,9 @@ pub(crate) struct VirtualAddressSpace {
 }
 
 /// Set up higher-half kernel address space
-pub(crate) fn initialize_address_space(bootinfo: *mut BootInfo, mut pmm: BitMapAllocator, old_stack: KernelStack, fb_base: u64, fb_page_count: usize) -> Result<VirtualAddressSpace, FrameAllocatorError> {
-
+pub(crate) fn initialize_address_space(bootinfo: *mut BootInfo, mut pmm: BitMapAllocator, old_stack: KernelStack, fb_base: u64, fb_page_count: usize) 
+    -> Result<(VirtualAddressSpace, bool), FrameAllocatorError> {
+    let mut nx = false;
     assert_ne!(bootinfo, ptr::null_mut());
     let bootinfo_ref = unsafe { bootinfo.as_ref().expect("bootinfo ptr must be valid") };
     
@@ -141,9 +142,11 @@ pub(crate) fn initialize_address_space(bootinfo: *mut BootInfo, mut pmm: BitMapA
         let address = fb_base + (page * PAGE_SIZE) as u64;
         manager.map_memory(address, address, PageEntryFlags::default_nx())
     })?;
-    
+     
+    // todo: fix bug that causes this to freeze on some machines
     // enable no-execute feature if available
     if let Some(mut efer) = Efer::read() {
+        nx = true;
         efer.insert(Efer::NXE);
         efer.write();
     }
@@ -162,13 +165,13 @@ pub(crate) fn initialize_address_space(bootinfo: *mut BootInfo, mut pmm: BitMapA
         num_pages: old_stack.num_pages
     };
 
-    Ok(
+    Ok((
         VirtualAddressSpace {
             bootinfo,
             manager,
             stack  
-        }
-    )
+        }, nx
+    ))
 
 
 }
