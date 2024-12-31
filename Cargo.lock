@@ -17,7 +17,6 @@ checksum = "b048fb63fd8b5923fc5aa7b340d8e156aec7ec02f0c78fa8a6ddc2613f6f71de"
 [[package]]
 name = "bootinfo"
 version = "0.1.0"
-source = "git+https://github.com/nebulafoundation/bootinfo.git#ed3eafe343937bce2d413860011e0409ff18a1dd"
 dependencies = [
  "framebuffer",
  "mem",
@@ -41,12 +40,10 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 [[package]]
 name = "fonts"
 version = "0.1.0"
-source = "git+https://github.com/nebulafoundation/graphics-core.git#bc9ba8c9f205b1ce64689666487e47c2bd655ee5"
 
 [[package]]
 name = "framebuffer"
 version = "0.1.0"
-source = "git+https://github.com/nebulafoundation/graphics-core.git#bc9ba8c9f205b1ce64689666487e47c2bd655ee5"
 dependencies = [
  "fonts",
  "sync",
@@ -67,10 +64,16 @@ dependencies = [
 [[package]]
 name = "hal"
 version = "0.1.0"
-source = "git+https://github.com/nebulafoundation/hal.git#586c542b8f8a32a000bb633572dbe20e39114064"
 dependencies = [
  "bitflags",
  "cc",
+]
+
+[[package]]
+name = "kernel"
+version = "0.1.0"
+dependencies = [
+ "bootinfo",
 ]
 
 [[package]]
@@ -82,7 +85,6 @@ checksum = "a7a70ba024b9dc04c27ea2f0c0548feb474ec5c54bba33a7f72f873a39d07b24"
 [[package]]
 name = "mem"
 version = "0.1.0"
-source = "git+https://github.com/nebulafoundation/mem.git#24202b9a622846a956c777bd25b80239c36bf3fc"
 dependencies = [
  "bitflags",
  "thiserror-no-std",
@@ -183,7 +185,6 @@ dependencies = [
 [[package]]
 name = "sync"
 version = "0.1.0"
-source = "git+https://github.com/nebulafoundation/sync.git#908fa0b8a5b752a22cd708ec0fed8d6b982e1fcc"
 
 [[package]]
 name = "thiserror-impl-no-std"

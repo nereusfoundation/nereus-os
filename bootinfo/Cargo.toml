@@ -1,0 +1,8 @@
+[package]
+name = "bootinfo"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+framebuffer = { path = "../framebuffer" }
+mem = { path = "../mem" }

@@ -1,2 +1,5 @@
-/target
-/.idea
+**/target
+**/.idea
+/build
+qemu.log
+stdio.log
