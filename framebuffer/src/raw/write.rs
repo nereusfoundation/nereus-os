@@ -4,8 +4,6 @@ use fonts::psf::RawFont;
 
 use crate::{color::Color, error::FrameBufferError, raw::RawFrameBuffer};
 
-const PAGE_SIZE: usize = 0x1000;
-
 #[derive(Debug)]
 pub struct RawWriter {
     row: usize,
@@ -48,14 +46,6 @@ impl RawWriter {
     /// Retrieve a mutable reference of writer's font data
     pub fn font(&mut self) -> &mut RawFont {
         &mut self.font   
-    }
-
-    /// Retrieve framebuffer metadata (base, page_count)
-    pub fn fb_meta(&self) -> (u64, usize) {
-        let fb = self.framebuffer.ptr();
-        assert_eq!(fb.len() & (PAGE_SIZE - 1), 0, "framebuffer size in bytes must be page aligned");
-
-        (fb as *mut u8 as u64, fb.len() / PAGE_SIZE)
     }
 }
 

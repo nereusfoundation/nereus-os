@@ -74,16 +74,6 @@ pub unsafe fn update_font(offset: VirtualAddress) {
     writer.font().update_glyph_buffer_ptr(new_ptr as *const u8);
 }
 
-/// Get Framebuffer Base and page count
-///
-/// # Safety
-/// The caller must guarantee that the logger is avaiable when calling this function.
-pub unsafe fn get_fb() -> (u64, usize) {
-    let mut locked = LOGGER.locked();
-    let writer = locked.get_mut().expect("getting framebuffer requires valid logger");
-    writer.fb_meta()
-}
-
 /// Take the writer instance out of the logger
 pub fn take_writer() -> Option<RawWriter> {
     let mut locked = LOGGER.locked();

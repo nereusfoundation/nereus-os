@@ -8,7 +8,7 @@ use uefi::{
     boot::{self, AllocateType, MemoryType}, mem::memory_map::MemoryMap
 };
 
-use crate::graphics::{self, logger};
+use crate::graphics;
 
 // custom memory types of the NebulaLoader
 pub(crate) const PSF_DATA: MemoryType = MemoryType::custom(0x8000_0000);
@@ -87,7 +87,7 @@ pub(crate) struct VirtualAddressSpace {
 }
 
 /// Set up higher-half kernel address space
-pub(crate) fn initialize_address_space(bootinfo: *mut BootInfo, mut pmm: BitMapAllocator, old_stack: KernelStack) -> Result<VirtualAddressSpace, FrameAllocatorError> {
+pub(crate) fn initialize_address_space(bootinfo: *mut BootInfo, mut pmm: BitMapAllocator, old_stack: KernelStack, fb_base: u64, fb_page_count: usize) -> Result<VirtualAddressSpace, FrameAllocatorError> {
 
     assert_ne!(bootinfo, ptr::null_mut());
     let bootinfo_ref = unsafe { bootinfo.as_ref().expect("bootinfo ptr must be valid") };
@@ -137,8 +137,6 @@ pub(crate) fn initialize_address_space(bootinfo: *mut BootInfo, mut pmm: BitMapA
         })?;
     
     // identity map framebuffer (later managed by VMM)
-    let (fb_base, fb_page_count) = unsafe { logger::get_fb() };
-    
     (0..fb_page_count).try_for_each(|page| {
         let address = fb_base + (page * PAGE_SIZE) as u64;
         manager.map_memory(address, address, PageEntryFlags::default_nx())

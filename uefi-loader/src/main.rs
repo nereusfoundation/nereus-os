@@ -39,8 +39,8 @@ fn main() -> Status {
             framebuffer.fill(Color::new(0, 0, 0));
             let font = parse_psf_font(PSF_FILE_NAME).unwrap();
 
-            let addr = framebuffer.ptr() as *mut u8 as u64;
-            let page_num = framebuffer.ptr().len().div_ceil(PAGE_SIZE);
+            let fb_addr = framebuffer.ptr() as *mut u8 as u64;
+            let fb_page_num = framebuffer.ptr().len().div_ceil(PAGE_SIZE);
 
             let writer = RawWriter::new(font, framebuffer, FG_COLOR_LOG, BG_COLOR);
 
@@ -51,7 +51,7 @@ fn main() -> Status {
             log!(FG_COLOR_LOG, " [LOG  ]: Initializing framebuffer ");
             logln!(FG_COLOR_OK, "OK");
 
-            loginfo!("Framebuffer address: {:#x}, pages: {:#x}", addr, page_num);
+            loginfo!("Framebuffer address: {:#x}, pages: {:#x}", fb_addr, fb_page_num);
 
             // get kernel file from disk
             let kernel_data = validate!(
@@ -112,7 +112,7 @@ fn main() -> Status {
             
             log!(FG_COLOR_LOG, " [LOG  ]: Initializing higher-half kernel address space ");
             
-            let vas = memory::initialize_address_space(bootinfo_ptr.as_ptr(), pmm, kernel_stack).expect("Error during `initialize_address_space`");
+            let vas = memory::initialize_address_space(bootinfo_ptr.as_ptr(), pmm, kernel_stack, fb_addr, fb_page_num).expect("Error during `initialize_address_space`");
             
             logln!(FG_COLOR_OK, "OK");
             loginfo!("Switchted to kernel page mappings");
