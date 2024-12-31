@@ -12,7 +12,7 @@ use mem::{
     map,
     paging::{ptm::PageTableManager, PageEntryFlags, PageTable},
     PhysicalAddress, KERNEL_CODE_VIRTUAL, KERNEL_DATA_VIRTUAL, KERNEL_STACK_SIZE,
-    KERNEL_STACK_VIRTUAL, PAGE_SIZE,
+    KERNEL_STACK_VIRTUAL, PAGE_SIZE, PAS_VIRTUAL, PAS_VIRTUAL_MAX,
 };
 use uefi::{
     boot::{self, AllocateType, MemoryType},
@@ -147,8 +147,16 @@ pub(crate) fn initialize_address_space(
         .iter()
         .try_for_each(|desc| -> Result<(), FrameAllocatorError> {
             let (virtual_base, physical_base, flags) = match desc.r#type {
-                // do not map memory that is without purpose or reserved
-                NebulaMemoryType::Available | NebulaMemoryType::Reserved => return Ok(()),
+                // map part of physical address space to higher half
+                NebulaMemoryType::Available => {
+                    if desc.phys_end < PAS_VIRTUAL_MAX {
+                        (PAS_VIRTUAL, desc.phys_start, PageEntryFlags::default_nx())
+                    } else {
+                        return Ok(());
+                    }
+                }
+                // do not map reserved memory
+                NebulaMemoryType::Reserved => return Ok(()),
                 NebulaMemoryType::KernelStack => (
                     KERNEL_STACK_VIRTUAL,
                     desc.phys_start - first_stack_addr,
@@ -204,11 +212,22 @@ pub(crate) fn initialize_address_space(
 
     // update bootinfo pointer (kernel data)
     let bootinfo = (KERNEL_DATA_VIRTUAL + bootinfo as u64 - first_data_addr) as *mut BootInfo;
+
+    // update kernel stack
     let stack = KernelStack {
         bottom: KERNEL_STACK_VIRTUAL,
         top: KERNEL_STACK_VIRTUAL + (KERNEL_STACK_SIZE - PAGE_SIZE) as u64,
         num_pages: old_stack.num_pages,
     };
+
+    // update ptm
+    unsafe {
+        // offset
+        manager.mappings().update_offset(PAS_VIRTUAL);
+
+        // pmm
+        manager.pmm().update_bit_map_ptr(PAS_VIRTUAL);
+    }
 
     Ok((
         VirtualAddressSpace {

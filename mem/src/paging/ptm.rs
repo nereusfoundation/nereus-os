@@ -69,16 +69,12 @@ impl PageTableMappings {
 }
 
 impl PageTableMappings {
-    pub fn pml4(&self) -> *mut PageTable {
+    pub fn pml4_physical(&self) -> *mut PageTable {
         self.pml4
     }
 
-    /// Used to switch to a different page table mapping.
-    ///
-    /// # Safety
-    /// The caller must ensure that the new address is mapped and valid.
-    pub unsafe fn update_pml4(&mut self, new_address: VirtualAddress) {
-        self.pml4 = new_address as *mut PageTable;
+    pub fn pml4_virtual(&self) -> *mut PageTable {
+        (self.pml4 as VirtualAddress + self.offset) as *mut PageTable
     }
 
     pub fn offset(&self) -> VirtualAddress {
@@ -104,7 +100,7 @@ impl PageTableMappings {
         pmm: &mut BitMapAllocator,
     ) -> Result<(), FrameAllocatorError> {
         let indexer = PageMapIndexer::new(virtual_address);
-        let pml4 = self.pml4;
+        let pml4 = self.pml4_virtual();
         let user = flags.contains(PageEntryFlags::USER_SUPER);
 
         // Map Level 3
@@ -127,7 +123,7 @@ impl PageTableMappings {
     /// Remove the mapping for given virtual address. Returns the physical address the virtual address previously pointed to.
     pub fn unmap_memory(&mut self, virtual_memory: VirtualAddress) -> Option<PhysicalAddress> {
         let indexer = PageMapIndexer::new(virtual_memory);
-        let page_map_level4 = self.pml4;
+        let page_map_level4 = self.pml4_virtual();
         // Map Level 3
         let page_map_level3 = self.get_next_table(page_map_level4, indexer.pdp_i())?;
         // Map Level 2

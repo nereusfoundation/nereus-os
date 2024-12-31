@@ -3,7 +3,7 @@ use core::slice;
 use crate::{
     error::FrameAllocatorError,
     map::{MemoryMap, MemoryType},
-    PhysicalAddress, PAGE_SIZE,
+    PhysicalAddress, PAGE_SIZE, PAS_VIRTUAL_MAX,
 };
 use map::BitMap;
 
@@ -18,20 +18,27 @@ pub struct BitMapAllocator {
     free_memory: u64,
     used_memory: u64,
     reserved_memory: u64,
+    /// Whether to use Loader and BootService memory types as available or ignore them. Defaults to
+    /// true.
+    ignore_loader: bool,
 }
 
 impl BitMapAllocator {
     /// Attempts to initialize a new bitmap allocator with the given memory map
     pub fn try_new(memory_map: MemoryMap) -> Result<BitMapAllocator, FrameAllocatorError> {
-        // total memory size in bytes => / PAGE_SIZE is the amount of pages. In the bitmap each page is one bit => /8 gives out the amount of bits
+        // total memory size in bytes => / PAGE_SIZE is the amount of pages. In the bitmap each page is one bit => /8 gives out the amount of bytes to allocate
         let total_pages = (memory_map.last_addr as usize).div_ceil(PAGE_SIZE);
-        let bit_map_size = (total_pages + 7) / 8;
+        let bit_map_size = total_pages.div_ceil(8);
 
         // find memory region to store bitmap in
         let mem = memory_map
             .descriptors()
             .iter()
-            .filter(|mem| mem.r#type == MemoryType::Available && mem.size() >= bit_map_size as u64)
+            .filter(|mem| {
+                mem.phys_end < PAS_VIRTUAL_MAX
+                    && mem.r#type == MemoryType::Available
+                    && mem.size() >= bit_map_size as u64
+            })
             .min_by(|a, b| a.size().cmp(&b.size()))
             .ok_or(FrameAllocatorError::InvalidMemoryMap)?;
 
@@ -54,6 +61,7 @@ impl BitMapAllocator {
             reserved_memory: 0,
             current_descriptor_index: 0,
             current_address: 0,
+            ignore_loader: true,
         };
 
         // reserve frames of bitmap
@@ -77,7 +85,9 @@ impl BitMapAllocator {
         for desc_index in self.current_descriptor_index..self.memory_map.descriptors().len() {
             let desc = &self.memory_map.descriptors()[desc_index];
 
-            if desc.r#type == MemoryType::Available {
+            if desc.r#type == MemoryType::Available
+                || !self.ignore_loader && desc.r#type == MemoryType::Loader
+            {
                 for addr in
                     (self.current_address.max(desc.phys_start)..desc.phys_end).step_by(PAGE_SIZE)
                 {
@@ -228,6 +238,46 @@ impl BitMapAllocator {
     /// Returns the amount of reserved memory in bytes
     pub fn reserved_memory(&self) -> u64 {
         self.reserved_memory
+    }
+}
+
+impl BitMapAllocator {
+    /// Update the bitmap buffer pointer. Mainly used to make the allocator available after
+    /// switching to a new paging scheme
+    ///
+    /// # Safety
+    /// Caller must guarantee that the new offset pointer is valid.
+    pub unsafe fn update_bit_map_ptr(&mut self, offset: u64) {
+        unsafe {
+            let old = self.bit_map.ptr() as u64;
+            // todo: handle case of buffer overflow
+            self.bit_map.update_ptr((offset + old) as *mut u8);
+        }
+    }
+
+    /// Make the Loader and BootService memory types available.
+    ///
+    /// # Safety
+    /// Caller must ensure that this function can be called. Must only be called from the kernel.
+    pub unsafe fn use_loader_memory(&mut self) -> Result<(), FrameAllocatorError> {
+        self.ignore_loader = false;
+        let mmap = self.memory_map;
+        mmap.descriptors()
+            .iter()
+            .filter(|desc| desc.r#type == MemoryType::Loader)
+            .try_for_each(|desc| {
+                self.free_reserved_frames(desc.phys_start, desc.num_pages as usize)
+            })
+    }
+}
+
+impl BitMapAllocator {
+    pub fn address(&mut self) -> u64 {
+        unsafe { self.bit_map.ptr() as u64 }
+    }
+
+    pub fn pages(&mut self) -> usize {
+        self.bit_map.pages()
     }
 }
 /// Returns total amount of memory in bytes based on memory map.

@@ -112,11 +112,15 @@ fn main() -> Status {
                     .mmap = memory_map;
             }
 
-            let pmm = validate!(
+            let mut pmm = validate!(
                 BitMapAllocator::try_new(memory_map),
                 "Initializing physical memory manager"
             );
-
+            loginfo!(
+                "BitMapAllocator address: {:#x}, page count: {:#x}",
+                pmm.address(),
+                pmm.pages()
+            );
             loginfo!("Free memory: {} bytes", pmm.free_memory());
             loginfo!("Used memory: {} bytes", pmm.used_memory());
             loginfo!("Reserved memory: {} bytes", pmm.reserved_memory());

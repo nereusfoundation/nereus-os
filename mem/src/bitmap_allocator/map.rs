@@ -1,3 +1,5 @@
+use core::slice;
+
 use crate::{error::FrameAllocatorError, PAGE_SIZE};
 
 #[repr(transparent)]
@@ -9,6 +11,25 @@ pub struct BitMap {
 impl BitMap {
     pub(crate) fn new(buffer: &'static mut [u8]) -> BitMap {
         BitMap { buffer }
+    }
+}
+
+impl BitMap {
+    /// Update the bitmap buffer pointer
+    ///
+    /// # Safety
+    /// The caller must guarantee that the pointer is valid.
+    pub(crate) unsafe fn update_ptr(&mut self, ptr: *mut u8) {
+        let len = self.buffer.len();
+        self.buffer = unsafe { slice::from_raw_parts_mut(ptr, len) };
+    }
+
+    /// Retrieve raw pointer to bitmap
+    ///
+    /// # Safety
+    /// Caller gets control of raw pointer to bitmap - must be handled with care
+    pub(crate) unsafe fn ptr(&mut self) -> *mut u8 {
+        self.buffer.as_mut_ptr() as *mut u8
     }
 }
 
@@ -45,6 +66,6 @@ impl BitMap {
     }
 
     pub fn pages(&self) -> usize {
-        size_of::<BitMap>().div_ceil(PAGE_SIZE)
+        self.buffer.len().div_ceil(PAGE_SIZE)
     }
 }
