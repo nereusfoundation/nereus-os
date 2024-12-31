@@ -2,7 +2,7 @@ use core::slice;
 
 use crate::{
     error::FrameAllocatorError,
-    map::{MemoryMap, MemoryType},
+    map::{MemoryDescriptor, MemoryMap, MemoryType},
     PhysicalAddress, PAGE_SIZE, PAS_VIRTUAL_MAX,
 };
 use map::BitMap;
@@ -253,6 +253,17 @@ impl BitMapAllocator {
             // todo: handle case of buffer overflow
             self.bit_map.update_ptr((offset + old) as *mut u8);
         }
+    }
+
+    /// Update the memory map descriptor pointer. Mainly used to make the allocator avaiable after
+    /// switching to a new paging scheme
+    ///
+    /// # Safety
+    /// Caller must guarantee that the new offset pointer is valid.
+    pub unsafe fn update_memory_map_ptr(&mut self, offset: u64) {
+        let old = self.memory_map.descriptors;
+        // todo: handle case of buffer overflow
+        self.memory_map.descriptors = (offset + old as u64) as *mut MemoryDescriptor;
     }
 
     /// Make the Loader and BootService memory types available.

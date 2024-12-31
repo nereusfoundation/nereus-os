@@ -29,7 +29,7 @@ impl BitMap {
     /// # Safety
     /// Caller gets control of raw pointer to bitmap - must be handled with care
     pub(crate) unsafe fn ptr(&mut self) -> *mut u8 {
-        self.buffer.as_mut_ptr() as *mut u8
+        self.buffer.as_mut_ptr()
     }
 }
 

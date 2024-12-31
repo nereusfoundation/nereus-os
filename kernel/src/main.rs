@@ -4,13 +4,24 @@
 use bootinfo::BootInfo;
 use core::{fmt::Write, panic::PanicInfo};
 
+mod memory;
+
 #[no_mangle]
 pub extern "sysv64" fn _start(bootinfo: &mut BootInfo) -> ! {
+    // todo: set up proper logger
     bootinfo
         .writer
-        .write_str(" [INFO ]: Hello nebula kernel!")
+        .write_str(" [INFO ]: Hello nebula kernel!\n")
         .unwrap();
-    // todo: unmap & unreserve loader memory
+
+    memory::reclaim_loader_memory(bootinfo).unwrap();
+
+    bootinfo
+        .writer
+        .write_str("done reclaiming loader mem")
+        .unwrap();
+
+    // remap loader memory to avaiable PAS offset mapping
     hlt();
 }
 

@@ -99,6 +99,7 @@ fn main() -> Status {
                 "Kernel boot info address: {:#x}",
                 bootinfo_ptr.as_ptr() as u64
             );
+
             log!(FG_COLOR_LOG, " [LOG  ]: Exiting boot services ");
             let memory_map = drop_boot_services(mmap_descriptors);
             logln!(FG_COLOR_OK, "OK");

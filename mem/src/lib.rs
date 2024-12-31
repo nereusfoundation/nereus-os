@@ -8,7 +8,7 @@ pub mod paging;
 pub type PhysicalAddress = u64;
 pub type VirtualAddress = u64;
 
-pub const PAGE_SIZE: usize = 4096;
+pub const PAGE_SIZE: usize = 0x1000;
 
 /// Size of initial kernel stack
 pub const KERNEL_STACK_SIZE: usize = 1024 * 16; // 16 KB

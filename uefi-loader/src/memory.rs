@@ -81,11 +81,21 @@ pub(crate) fn allocate_bootinfo(
         .map(|bootinfo| bootinfo.cast::<BootInfo>())?;
 
     // get uefi memory map meta data to allocate a sufficient number of bytes for the nebula memory map in advance
-    let size = boot::memory_map(MMAP_META_DATA)?.meta().map_size;
-
-    let descriptors = Vec::with_capacity(size);
+    let len = boot::memory_map(MMAP_META_DATA)?.meta().map_size;
+    let descriptors = allocate_memory_map(len)?;
 
     Ok((ptr, descriptors))
+}
+
+fn allocate_memory_map(cap: usize) -> Result<Vec<NebulaMemoryDescriptor>, uefi::Error> {
+    assert_eq!(
+        align_of::<Vec<NebulaMemoryDescriptor>>(),
+        0x8,
+        "invalid memory descriptor alignment"
+    );
+
+    let ptr = boot::allocate_pool(KERNEL_DATA, cap)?.as_ptr() as *mut NebulaMemoryDescriptor;
+    Ok(unsafe { Vec::from_raw_parts(ptr, 0, cap) })
 }
 
 /// Wrapper for attributes of the virtual address space for the kernel
@@ -106,7 +116,7 @@ pub(crate) fn initialize_address_space(
 ) -> Result<(VirtualAddressSpace, bool), FrameAllocatorError> {
     let mut nx = false;
     assert_ne!(bootinfo, ptr::null_mut());
-    let bootinfo_ref = unsafe { bootinfo.as_ref().expect("bootinfo ptr must be valid") };
+    let bootinfo_ref = unsafe { bootinfo.as_mut().expect("bootinfo ptr must be valid") };
 
     let memory_map = bootinfo_ref.mmap;
 
@@ -180,6 +190,7 @@ pub(crate) fn initialize_address_space(
             (0..desc.num_pages).try_for_each(|page| {
                 let physical_address = desc.phys_start + page * PAGE_SIZE as u64;
                 let virtual_address = virtual_base + physical_base + page * PAGE_SIZE as u64;
+
                 manager.map_memory(virtual_address, physical_address, flags)
             })?;
 
@@ -203,6 +214,9 @@ pub(crate) fn initialize_address_space(
     // update bootinfo values
     unsafe {
         graphics::logger::update_font(KERNEL_DATA_VIRTUAL - first_data_addr);
+        bootinfo_ref.mmap.descriptors = (memory_map.descriptors as u64 + KERNEL_DATA_VIRTUAL
+            - first_data_addr)
+            as *mut NebulaMemoryDescriptor;
     }
 
     // switch to new paging scheme
@@ -225,8 +239,13 @@ pub(crate) fn initialize_address_space(
         // offset
         manager.mappings().update_offset(PAS_VIRTUAL);
 
-        // pmm
+        // pmm bit map
         manager.pmm().update_bit_map_ptr(PAS_VIRTUAL);
+
+        // pmm memory map
+        manager
+            .pmm()
+            .update_memory_map_ptr(KERNEL_DATA_VIRTUAL - first_data_addr);
     }
 
     Ok((
