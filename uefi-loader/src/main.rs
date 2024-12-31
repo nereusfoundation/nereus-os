@@ -10,8 +10,10 @@ use alloc::vec::Vec;
 use boot::MemoryType;
 use framebuffer::{color::Color, raw::write::RawWriter};
 use graphics::{
-    initialize_framebuffer, logger::{self, LOGGER}, parse_psf_font, BG_COLOR, CAPTION, FG_COLOR_CAPTION,
-    FG_COLOR_ERROR, FG_COLOR_INFO, FG_COLOR_LOG, FG_COLOR_OK,
+    initialize_framebuffer,
+    logger::{self, LOGGER},
+    parse_psf_font, BG_COLOR, CAPTION, FG_COLOR_CAPTION, FG_COLOR_ERROR, FG_COLOR_INFO,
+    FG_COLOR_LOG, FG_COLOR_OK,
 };
 use log::{error, info};
 use mem::{bitmap_allocator::BitMapAllocator, KERNEL_STACK_SIZE, PAGE_SIZE};
@@ -51,7 +53,11 @@ fn main() -> Status {
             log!(FG_COLOR_LOG, " [LOG  ]: Initializing framebuffer ");
             logln!(FG_COLOR_OK, "OK");
 
-            loginfo!("Framebuffer address: {:#x}, pages: {:#x}", fb_addr, fb_page_num);
+            loginfo!(
+                "Framebuffer address: {:#x}, pages: {:#x}",
+                fb_addr,
+                fb_page_num
+            );
 
             // get kernel file from disk
             let kernel_data = validate!(
@@ -89,7 +95,6 @@ fn main() -> Status {
                 "Allocating memory for kernel bootinfo"
             );
 
-
             loginfo!(
                 "Kernel boot info address: {:#x}",
                 bootinfo_ptr.as_ptr() as u64
@@ -97,10 +102,16 @@ fn main() -> Status {
             log!(FG_COLOR_LOG, " [LOG  ]: Exiting boot services ");
             let memory_map = drop_boot_services(mmap_descriptors);
             logln!(FG_COLOR_OK, "OK");
-            
+
             // set memory map of boot info to the correct one
-            unsafe { bootinfo_ptr.as_ptr().as_mut().expect("bootinfo ptr must be valid").mmap = memory_map; }
-            
+            unsafe {
+                bootinfo_ptr
+                    .as_ptr()
+                    .as_mut()
+                    .expect("bootinfo ptr must be valid")
+                    .mmap = memory_map;
+            }
+
             let pmm = validate!(
                 BitMapAllocator::try_new(memory_map),
                 "Initializing physical memory manager"
@@ -109,28 +120,39 @@ fn main() -> Status {
             loginfo!("Free memory: {} bytes", pmm.free_memory());
             loginfo!("Used memory: {} bytes", pmm.used_memory());
             loginfo!("Reserved memory: {} bytes", pmm.reserved_memory());
-            
-            log!(FG_COLOR_LOG, " [LOG  ]: Initializing higher-half kernel address space ");
-            
-            let (vas, nx) = memory::initialize_address_space(bootinfo_ptr.as_ptr(), pmm, kernel_stack, fb_addr, fb_page_num).expect("Error during `initialize_address_space`");
-            
+
+            log!(
+                FG_COLOR_LOG,
+                " [LOG  ]: Initializing higher-half kernel address space "
+            );
+
+            let (vas, nx) = memory::initialize_address_space(
+                bootinfo_ptr.as_ptr(),
+                pmm,
+                kernel_stack,
+                fb_addr,
+                fb_page_num,
+            )
+            .expect("Error during `initialize_address_space`");
+
             logln!(FG_COLOR_OK, "OK");
             loginfo!("Switchted to kernel page mappings");
             if nx {
                 loginfo!("Enabled NO-EXECUTE CPU feature");
             }
             loginfo!("Handing control to kernel...");
-            
+
             let bootinfo_ref = unsafe { vas.bootinfo.as_mut().unwrap() };
-            
+
             // assign ptm to bootinfo
             bootinfo_ref.ptm = vas.manager;
 
             // assign writer to bootinfo
-            bootinfo_ref.writer = logger::take_writer().unwrap(); 
-            
-            unsafe { asm!( "mov rdi, {1}", "mov rsp, {2}", "jmp {0}", in(reg) kernel_elf.entry(), in(reg) vas.bootinfo,  in(reg) vas.stack.top(), options(noreturn)); }
-            
+            bootinfo_ref.writer = logger::take_writer().unwrap();
+
+            unsafe {
+                asm!( "mov rdi, {1}", "mov rsp, {2}", "jmp {0}", in(reg) kernel_elf.entry(), in(reg) vas.bootinfo,  in(reg) vas.stack.top(), options(noreturn));
+            }
         }
         // this won't always be shown in the console, because stdout may not be available in some cases
         Err(err) => error!("Bootloader: Failed to initialize framebuffer: {}", err),
@@ -146,7 +168,7 @@ fn drop_boot_services(mut mmap_descriptors: Vec<NebulaMemoryDescriptor>) -> Nebu
     let mut first_available_addr = first_addr;
     let mut last_addr = u64::MIN;
     let mut last_available_addr = last_addr;
-        
+
     // convert memory map
     mmap.entries().for_each(|desc| {
         let phys_end = desc.phys_start + desc.page_count * PAGE_SIZE as u64;
@@ -163,17 +185,17 @@ fn drop_boot_services(mut mmap_descriptors: Vec<NebulaMemoryDescriptor>) -> Nebu
             NebulaMemoryType::Reserved
         } else {
             match desc.ty {
-                MemoryType::CONVENTIONAL
-                                | MMAP_META_DATA => NebulaMemoryType::Available,
+                MemoryType::CONVENTIONAL | MMAP_META_DATA => NebulaMemoryType::Available,
                 KERNEL_CODE => NebulaMemoryType::KernelCode,
                 KERNEL_DATA | PSF_DATA => NebulaMemoryType::KernelData,
                 KERNEL_STACK => NebulaMemoryType::KernelStack,
                 MemoryType::ACPI_RECLAIM | MemoryType::ACPI_NON_VOLATILE => {
                     NebulaMemoryType::AcpiData
-                },
-                MemoryType::LOADER_CODE | MemoryType::LOADER_DATA | MemoryType::BOOT_SERVICES_CODE
-                | MemoryType::BOOT_SERVICES_DATA
-=> NebulaMemoryType::Loader,
+                }
+                MemoryType::LOADER_CODE
+                | MemoryType::LOADER_DATA
+                | MemoryType::BOOT_SERVICES_CODE
+                | MemoryType::BOOT_SERVICES_DATA => NebulaMemoryType::Loader,
                 _ => NebulaMemoryType::Reserved,
             }
         };

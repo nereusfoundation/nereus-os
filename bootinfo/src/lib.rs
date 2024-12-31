@@ -9,4 +9,3 @@ pub struct BootInfo {
     pub writer: RawWriter,
     pub ptm: PageTableManager,
 }
-

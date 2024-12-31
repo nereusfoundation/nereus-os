@@ -1,7 +1,7 @@
 use core::arch::x86_64::__cpuid;
 
-use bitflags::bitflags;
 use super::{cpu_has_msr, set_msr, ModelSpecificRegister};
+use bitflags::bitflags;
 
 const IA32_EFER: u32 = 0xC000_0080;
 
@@ -49,5 +49,3 @@ impl Efer {
         unsafe { __cpuid(0x80000001).edx & (1 << 20) != 0 }
     }
 }
-
-

@@ -2,7 +2,6 @@ pub mod efer;
 
 use bitflags::Flags;
 
-
 extern "C" {
     pub fn cpu_has_msr() -> bool;
     pub fn get_msr(index: u32) -> u64;

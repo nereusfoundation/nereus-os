@@ -1,8 +1,10 @@
 use core::arch::asm;
 
-use crate::{bitmap_allocator::BitMapAllocator, error::FrameAllocatorError, PhysicalAddress, VirtualAddress};
+use crate::{
+    bitmap_allocator::BitMapAllocator, error::FrameAllocatorError, PhysicalAddress, VirtualAddress,
+};
 
-use super::{PageEntryFlags, PageTable, index::PageMapIndexer};
+use super::{index::PageMapIndexer, PageEntryFlags, PageTable};
 
 /// Manages Page Table Mappings
 #[derive(Debug)]

@@ -1,11 +1,22 @@
-use core::{arch::asm, ptr::{self, NonNull}};
+use core::{
+    arch::asm,
+    ptr::{self, NonNull},
+};
 
 use alloc::vec::Vec;
 use bootinfo::BootInfo;
 use hal::msr::{efer::Efer, ModelSpecificRegister};
-use mem::{map, PhysicalAddress, PAGE_SIZE, bitmap_allocator::BitMapAllocator, error::FrameAllocatorError, paging::{ptm::PageTableManager, PageEntryFlags, PageTable}, KERNEL_CODE_VIRTUAL, KERNEL_DATA_VIRTUAL, KERNEL_STACK_SIZE, KERNEL_STACK_VIRTUAL};
+use mem::{
+    bitmap_allocator::BitMapAllocator,
+    error::FrameAllocatorError,
+    map,
+    paging::{ptm::PageTableManager, PageEntryFlags, PageTable},
+    PhysicalAddress, KERNEL_CODE_VIRTUAL, KERNEL_DATA_VIRTUAL, KERNEL_STACK_SIZE,
+    KERNEL_STACK_VIRTUAL, PAGE_SIZE,
+};
 use uefi::{
-    boot::{self, AllocateType, MemoryType}, mem::memory_map::MemoryMap
+    boot::{self, AllocateType, MemoryType},
+    mem::memory_map::MemoryMap,
 };
 
 use crate::graphics;
@@ -16,7 +27,6 @@ pub(crate) const KERNEL_CODE: MemoryType = MemoryType::custom(0x8000_0001);
 pub(crate) const KERNEL_STACK: MemoryType = MemoryType::custom(0x8000_0002);
 pub(crate) const KERNEL_DATA: MemoryType = MemoryType::custom(0x8000_0003);
 pub(crate) const MMAP_META_DATA: MemoryType = MemoryType::custom(0x8000_0004);
-
 
 pub(crate) type NebulaMemoryMap = map::MemoryMap;
 pub(crate) type NebulaMemoryDescriptor = map::MemoryDescriptor;
@@ -87,30 +97,49 @@ pub(crate) struct VirtualAddressSpace {
 }
 
 /// Set up higher-half kernel address space
-pub(crate) fn initialize_address_space(bootinfo: *mut BootInfo, mut pmm: BitMapAllocator, old_stack: KernelStack, fb_base: u64, fb_page_count: usize) 
-    -> Result<(VirtualAddressSpace, bool), FrameAllocatorError> {
+pub(crate) fn initialize_address_space(
+    bootinfo: *mut BootInfo,
+    mut pmm: BitMapAllocator,
+    old_stack: KernelStack,
+    fb_base: u64,
+    fb_page_count: usize,
+) -> Result<(VirtualAddressSpace, bool), FrameAllocatorError> {
     let mut nx = false;
     assert_ne!(bootinfo, ptr::null_mut());
     let bootinfo_ref = unsafe { bootinfo.as_ref().expect("bootinfo ptr must be valid") };
-    
+
     let memory_map = bootinfo_ref.mmap;
 
     let pml4_addr = pmm.request_page()?;
-    assert_eq!((pml4_addr as usize) % align_of::<PageTable>(), 0, "pml4 pointer is not aligned");
-    
+    assert_eq!(
+        (pml4_addr as usize) % align_of::<PageTable>(),
+        0,
+        "pml4 pointer is not aligned"
+    );
+
     let pml4 = pml4_addr as *mut PageTable;
 
     // zero out new table
     unsafe { ptr::write_bytes(pml4, 0, 1) };
-    
+
     let mut manager = PageTableManager::new(pml4, pmm);
-    
-    let first_addr = |mem_types: &[NebulaMemoryType], mem_map: NebulaMemoryMap|
-        mem_map.descriptors().iter().filter(|desc| mem_types.contains(&desc.r#type)).map(|desc| desc.phys_start).min().ok_or(FrameAllocatorError::InvalidMemoryMap);
+
+    let first_addr = |mem_types: &[NebulaMemoryType], mem_map: NebulaMemoryMap| {
+        mem_map
+            .descriptors()
+            .iter()
+            .filter(|desc| mem_types.contains(&desc.r#type))
+            .map(|desc| desc.phys_start)
+            .min()
+            .ok_or(FrameAllocatorError::InvalidMemoryMap)
+    };
 
     let first_stack_addr = first_addr(&[NebulaMemoryType::KernelStack], memory_map)?;
-    let first_data_addr = first_addr(&[NebulaMemoryType::KernelData, NebulaMemoryType::AcpiData], memory_map)?;
-    
+    let first_data_addr = first_addr(
+        &[NebulaMemoryType::KernelData, NebulaMemoryType::AcpiData],
+        memory_map,
+    )?;
+
     // map kernel physical address space to canonical higher half (canonical lower half is reserved
     // for userspace)
     memory_map
@@ -120,12 +149,24 @@ pub(crate) fn initialize_address_space(bootinfo: *mut BootInfo, mut pmm: BitMapA
             let (virtual_base, physical_base, flags) = match desc.r#type {
                 // do not map memory that is without purpose or reserved
                 NebulaMemoryType::Available | NebulaMemoryType::Reserved => return Ok(()),
-                NebulaMemoryType::KernelStack => (KERNEL_STACK_VIRTUAL, desc.phys_start - first_stack_addr, PageEntryFlags::default_nx()),
-                NebulaMemoryType::KernelData | NebulaMemoryType::AcpiData => (KERNEL_DATA_VIRTUAL, desc.phys_start - first_data_addr, PageEntryFlags::default_nx()),
-                NebulaMemoryType::KernelCode => (KERNEL_CODE_VIRTUAL, desc.phys_start, PageEntryFlags::default()),
+                NebulaMemoryType::KernelStack => (
+                    KERNEL_STACK_VIRTUAL,
+                    desc.phys_start - first_stack_addr,
+                    PageEntryFlags::default_nx(),
+                ),
+                NebulaMemoryType::KernelData | NebulaMemoryType::AcpiData => (
+                    KERNEL_DATA_VIRTUAL,
+                    desc.phys_start - first_data_addr,
+                    PageEntryFlags::default_nx(),
+                ),
+                NebulaMemoryType::KernelCode => (
+                    KERNEL_CODE_VIRTUAL,
+                    desc.phys_start,
+                    PageEntryFlags::default(),
+                ),
                 // loader data, code pages will later be reclaimed by the kernel - must be
                 // identity-mapped for now
-                NebulaMemoryType::Loader => (0, desc.phys_start, PageEntryFlags::default())
+                NebulaMemoryType::Loader => (0, desc.phys_start, PageEntryFlags::default()),
             };
 
             (0..desc.num_pages).try_for_each(|page| {
@@ -133,16 +174,16 @@ pub(crate) fn initialize_address_space(bootinfo: *mut BootInfo, mut pmm: BitMapA
                 let virtual_address = virtual_base + physical_base + page * PAGE_SIZE as u64;
                 manager.map_memory(virtual_address, physical_address, flags)
             })?;
-        
+
             Ok(())
         })?;
-    
+
     // identity map framebuffer (later managed by VMM)
     (0..fb_page_count).try_for_each(|page| {
         let address = fb_base + (page * PAGE_SIZE) as u64;
         manager.map_memory(address, address, PageEntryFlags::default_nx())
     })?;
-     
+
     // todo: fix bug that causes this to freeze on some machines
     // enable no-execute feature if available
     if let Some(mut efer) = Efer::read() {
@@ -151,28 +192,30 @@ pub(crate) fn initialize_address_space(bootinfo: *mut BootInfo, mut pmm: BitMapA
         efer.write();
     }
 
-    // update bootinfo values    
-    unsafe { graphics::logger::update_font(KERNEL_DATA_VIRTUAL - first_data_addr); }
-    
+    // update bootinfo values
+    unsafe {
+        graphics::logger::update_font(KERNEL_DATA_VIRTUAL - first_data_addr);
+    }
+
     // switch to new paging scheme
-    unsafe { asm!("mov cr3, {0}", in(reg) pml4_addr); }
+    unsafe {
+        asm!("mov cr3, {0}", in(reg) pml4_addr);
+    }
 
     // update bootinfo pointer (kernel data)
-    let bootinfo = (KERNEL_DATA_VIRTUAL + bootinfo as u64 - first_data_addr) as *mut BootInfo; 
+    let bootinfo = (KERNEL_DATA_VIRTUAL + bootinfo as u64 - first_data_addr) as *mut BootInfo;
     let stack = KernelStack {
         bottom: KERNEL_STACK_VIRTUAL,
         top: KERNEL_STACK_VIRTUAL + (KERNEL_STACK_SIZE - PAGE_SIZE) as u64,
-        num_pages: old_stack.num_pages
+        num_pages: old_stack.num_pages,
     };
 
     Ok((
         VirtualAddressSpace {
             bootinfo,
             manager,
-            stack  
-        }, nx
+            stack,
+        },
+        nx,
     ))
-
-
 }
-

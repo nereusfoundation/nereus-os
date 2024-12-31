@@ -1,6 +1,10 @@
 use core::slice;
 
-use crate::{error::FrameAllocatorError, map::{MemoryMap, MemoryType}, PhysicalAddress, PAGE_SIZE};
+use crate::{
+    error::FrameAllocatorError,
+    map::{MemoryMap, MemoryType},
+    PhysicalAddress, PAGE_SIZE,
+};
 use map::BitMap;
 
 pub mod map;

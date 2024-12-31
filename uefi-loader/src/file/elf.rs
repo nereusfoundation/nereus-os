@@ -1,8 +1,8 @@
 use core::slice;
 
 use alloc::vec::Vec;
-use mem::{PhysicalAddress, VirtualAddress, PAGE_SIZE};
 use goblin::elf::program_header::PT_LOAD;
+use mem::{PhysicalAddress, VirtualAddress, PAGE_SIZE};
 use uefi::boot;
 
 use crate::{error::ElfParseError, memory::KERNEL_CODE};

@@ -53,6 +53,6 @@ pub enum MemoryType {
     KernelData = 4,
     /// acpi tables
     AcpiData = 5,
-    /// loader code,data 
+    /// loader code,data
     Loader = 6,
 }

@@ -1,8 +1,8 @@
 #![no_std]
 
-pub mod map;
 pub mod bitmap_allocator;
 pub mod error;
+pub mod map;
 pub mod paging;
 
 pub type PhysicalAddress = u64;
@@ -19,4 +19,3 @@ pub const KERNEL_STACK_VIRTUAL: VirtualAddress = 0xffff_ffff_ffff_ffff - KERNEL_
 pub const KERNEL_DATA_VIRTUAL: VirtualAddress = 0xffff_ffff_7000_0000;
 /// Virtual offset of kernel code (starting at 0)
 pub const KERNEL_CODE_VIRTUAL: VirtualAddress = 0xffff_ffff_8000_0000;
-

@@ -28,13 +28,12 @@ impl RawFont {
         RawFont {
             header,
             glyph_buffer_ptr,
-            glyph_buffer_size
+            glyph_buffer_size,
         }
     }
 }
 
 impl RawFont {
-    
     /// Update glyph buffer pointer
     ///
     /// # Safety
@@ -42,7 +41,6 @@ impl RawFont {
     pub unsafe fn update_glyph_buffer_ptr(&mut self, new_ptr: *const u8) {
         self.glyph_buffer_ptr = new_ptr;
     }
-
 }
 
 impl RawFont {
@@ -53,7 +51,7 @@ impl RawFont {
     }
 
     pub fn glyph_buffer_address(&self) -> *const u8 {
-        self.glyph_buffer_ptr 
+        self.glyph_buffer_ptr
     }
 
     pub fn glyph_bytes(&self) -> usize {

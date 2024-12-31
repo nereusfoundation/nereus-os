@@ -1,7 +1,7 @@
 use core::fmt::Write;
-use mem::VirtualAddress;
 use framebuffer::{color::Color, raw::write::RawWriter, safe::Writer};
 use hal::interrupts::without_interrupts;
+use mem::VirtualAddress;
 
 pub(crate) static LOGGER: Writer = Writer::new();
 

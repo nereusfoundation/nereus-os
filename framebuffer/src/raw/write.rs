@@ -45,7 +45,7 @@ impl RawWriter {
 
     /// Retrieve a mutable reference of writer's font data
     pub fn font(&mut self) -> &mut RawFont {
-        &mut self.font   
+        &mut self.font
     }
 }
 

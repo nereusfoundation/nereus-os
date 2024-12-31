@@ -1,4 +1,3 @@
-
 use crate::{error::FrameAllocatorError, PAGE_SIZE};
 
 #[repr(transparent)]
