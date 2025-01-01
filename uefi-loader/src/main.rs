@@ -80,7 +80,7 @@ fn main() -> Status {
             );
 
             let kernel_stack = validate!(
-                memory::allocate_kernel_stack(KERNEL_STACK_SIZE),
+                memory::stack::allocate_kernel_stack(KERNEL_STACK_SIZE),
                 "Allocating memory for kernel stack"
             );
             loginfo!(
@@ -91,7 +91,7 @@ fn main() -> Status {
             );
 
             let (bootinfo_ptr, mmap_descriptors) = validate!(
-                memory::allocate_bootinfo(),
+                memory::bootinfo::allocate_bootinfo(),
                 "Allocating memory for kernel bootinfo"
             );
 

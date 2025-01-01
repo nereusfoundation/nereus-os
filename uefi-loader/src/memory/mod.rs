@@ -1,25 +1,22 @@
-use core::{
-    arch::asm,
-    ptr::{self, NonNull},
-};
+use core::{arch::asm, ptr};
 
-use alloc::vec::Vec;
-use bootinfo::BootInfo;
+use ::bootinfo::BootInfo;
 use hal::msr::{efer::Efer, ModelSpecificRegister};
 use mem::{
     bitmap_allocator::BitMapAllocator,
     error::FrameAllocatorError,
     map,
     paging::{ptm::PageTableManager, PageEntryFlags, PageTable},
-    PhysicalAddress, KERNEL_CODE_VIRTUAL, KERNEL_DATA_VIRTUAL, KERNEL_STACK_SIZE,
-    KERNEL_STACK_VIRTUAL, PAGE_SIZE, PAS_VIRTUAL, PAS_VIRTUAL_MAX,
+    KERNEL_CODE_VIRTUAL, KERNEL_DATA_VIRTUAL, KERNEL_STACK_SIZE, KERNEL_STACK_VIRTUAL, PAGE_SIZE,
+    PAS_VIRTUAL, PAS_VIRTUAL_MAX,
 };
-use uefi::{
-    boot::{self, AllocateType, MemoryType},
-    mem::memory_map::MemoryMap,
-};
+use stack::KernelStack;
+use uefi::boot::MemoryType;
 
 use crate::graphics;
+
+pub(crate) mod bootinfo;
+pub(crate) mod stack;
 
 // custom memory types of the NebulaLoader
 pub(crate) const PSF_DATA: MemoryType = MemoryType::custom(0x8000_0000);
@@ -31,72 +28,6 @@ pub(crate) const MMAP_META_DATA: MemoryType = MemoryType::custom(0x8000_0004);
 pub(crate) type NebulaMemoryMap = map::MemoryMap;
 pub(crate) type NebulaMemoryDescriptor = map::MemoryDescriptor;
 pub(crate) type NebulaMemoryType = map::MemoryType;
-
-#[derive(Copy, Clone, Debug)]
-pub(crate) struct KernelStack {
-    /// Starting address of memory allocated for stack
-    ///
-    /// > since uefi sets up identity-mapped paging, the virtual and physical addresses are equivalent
-    bottom: PhysicalAddress,
-    /// Address of stack top
-    ///
-    /// > since uefi sets up identity-mapped paging, the virtual and physical addresses are equivalent
-    top: PhysicalAddress,
-    /// Number of stack pages
-    num_pages: usize,
-}
-
-impl KernelStack {
-    pub(crate) fn bottom(&self) -> PhysicalAddress {
-        self.bottom
-    }
-    pub(crate) fn top(&self) -> PhysicalAddress {
-        self.top
-    }
-    pub(crate) fn num_pages(&self) -> usize {
-        self.num_pages
-    }
-}
-
-/// Allocate kernel stack with the given size in bytes (aligned to upward page-size)
-pub(crate) fn allocate_kernel_stack(bytes: usize) -> Result<KernelStack, uefi::Error> {
-    let num_pages = bytes.div_ceil(PAGE_SIZE);
-    let bottom = boot::allocate_pages(AllocateType::AnyPages, KERNEL_STACK, num_pages)?.as_ptr()
-        as PhysicalAddress;
-    let top = bottom + (PAGE_SIZE * num_pages) as u64;
-
-    Ok(KernelStack {
-        bottom,
-        top,
-        num_pages,
-    })
-}
-
-/// Allocate page-sized memory for kernel bootinfo and set up vector of memory map descriptors
-pub(crate) fn allocate_bootinfo(
-) -> Result<(NonNull<BootInfo>, Vec<NebulaMemoryDescriptor>), uefi::Error> {
-    let num_pages = size_of::<BootInfo>().div_ceil(PAGE_SIZE);
-
-    let ptr = boot::allocate_pages(AllocateType::AnyPages, KERNEL_DATA, num_pages)
-        .map(|bootinfo| bootinfo.cast::<BootInfo>())?;
-
-    // get uefi memory map meta data to allocate a sufficient number of bytes for the nebula memory map in advance
-    let len = boot::memory_map(MMAP_META_DATA)?.meta().map_size;
-    let descriptors = allocate_memory_map(len)?;
-
-    Ok((ptr, descriptors))
-}
-
-fn allocate_memory_map(cap: usize) -> Result<Vec<NebulaMemoryDescriptor>, uefi::Error> {
-    assert_eq!(
-        align_of::<Vec<NebulaMemoryDescriptor>>(),
-        0x8,
-        "invalid memory descriptor alignment"
-    );
-
-    let ptr = boot::allocate_pool(KERNEL_DATA, cap)?.as_ptr() as *mut NebulaMemoryDescriptor;
-    Ok(unsafe { Vec::from_raw_parts(ptr, 0, cap) })
-}
 
 /// Wrapper for attributes of the virtual address space for the kernel
 #[derive(Debug)]
