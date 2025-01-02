@@ -7,8 +7,8 @@ use mem::{
     error::FrameAllocatorError,
     map,
     paging::{ptm::PageTableManager, PageEntryFlags, PageTable},
-    KERNEL_CODE_VIRTUAL, KERNEL_DATA_VIRTUAL, KERNEL_STACK_SIZE, KERNEL_STACK_VIRTUAL, PAGE_SIZE,
-    PAS_VIRTUAL, PAS_VIRTUAL_MAX,
+    KERNEL_CODE_VIRTUAL, KERNEL_STACK_SIZE, KERNEL_STACK_VIRTUAL, PAGE_SIZE, PAS_VIRTUAL,
+    PAS_VIRTUAL_MAX,
 };
 use stack::KernelStack;
 use uefi::boot::MemoryType;
@@ -65,21 +65,13 @@ pub(crate) fn initialize_address_space(
 
     let mut manager = PageTableManager::new(pml4, pmm);
 
-    let first_addr = |mem_types: &[NebulaMemoryType], mem_map: NebulaMemoryMap| {
-        mem_map
-            .descriptors()
-            .iter()
-            .filter(|desc| mem_types.contains(&desc.r#type))
-            .map(|desc| desc.phys_start)
-            .min()
-            .ok_or(FrameAllocatorError::InvalidMemoryMap)
-    };
-
-    let first_stack_addr = first_addr(&[NebulaMemoryType::KernelStack], memory_map)?;
-    let first_data_addr = first_addr(
-        &[NebulaMemoryType::KernelData, NebulaMemoryType::AcpiData],
-        memory_map,
-    )?;
+    let first_stack_addr = memory_map
+        .descriptors()
+        .iter()
+        .filter(|desc| desc.r#type == NebulaMemoryType::KernelStack)
+        .map(|desc| desc.phys_start)
+        .min()
+        .ok_or(FrameAllocatorError::InvalidMemoryMap)?;
 
     // map kernel physical address space to canonical higher half (canonical lower half is reserved
     // for userspace)
@@ -103,11 +95,10 @@ pub(crate) fn initialize_address_space(
                     desc.phys_start - first_stack_addr,
                     PageEntryFlags::default_nx(),
                 ),
-                NebulaMemoryType::KernelData | NebulaMemoryType::AcpiData => (
-                    KERNEL_DATA_VIRTUAL,
-                    desc.phys_start - first_data_addr,
-                    PageEntryFlags::default_nx(),
-                ),
+                // map kernel data same as available PAS
+                NebulaMemoryType::KernelData | NebulaMemoryType::AcpiData => {
+                    (PAS_VIRTUAL, desc.phys_start, PageEntryFlags::default_nx())
+                }
                 NebulaMemoryType::KernelCode => (
                     KERNEL_CODE_VIRTUAL,
                     desc.phys_start,
@@ -144,10 +135,9 @@ pub(crate) fn initialize_address_space(
 
     // update bootinfo values
     unsafe {
-        graphics::logger::update_font(KERNEL_DATA_VIRTUAL - first_data_addr);
-        bootinfo_ref.mmap.descriptors = (memory_map.descriptors as u64 + KERNEL_DATA_VIRTUAL
-            - first_data_addr)
-            as *mut NebulaMemoryDescriptor;
+        graphics::logger::update_font(PAS_VIRTUAL);
+        bootinfo_ref.mmap.descriptors =
+            (memory_map.descriptors as u64 + PAS_VIRTUAL) as *mut NebulaMemoryDescriptor;
     }
 
     // switch to new paging scheme
@@ -156,7 +146,7 @@ pub(crate) fn initialize_address_space(
     }
 
     // update bootinfo pointer (kernel data)
-    let bootinfo = (KERNEL_DATA_VIRTUAL + bootinfo as u64 - first_data_addr) as *mut BootInfo;
+    let bootinfo = (PAS_VIRTUAL + bootinfo as u64) as *mut BootInfo;
 
     // update kernel stack
     let stack = KernelStack {
@@ -174,9 +164,7 @@ pub(crate) fn initialize_address_space(
         manager.pmm().update_bit_map_ptr(PAS_VIRTUAL);
 
         // pmm memory map
-        manager
-            .pmm()
-            .update_memory_map_ptr(KERNEL_DATA_VIRTUAL - first_data_addr);
+        manager.pmm().update_memory_map_ptr(PAS_VIRTUAL);
     }
 
     Ok((

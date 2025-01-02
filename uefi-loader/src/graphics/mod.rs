@@ -3,6 +3,7 @@ use fonts::psf::{
     RawFont, PSF1_MAGIC, PSF2_MAGIC,
 };
 use framebuffer::{color::Color, raw::RawFrameBuffer};
+use mem::{PAGE_SIZE, PAS_VIRTUAL_MAX};
 use uefi::{boot, proto::console::gop::GraphicsOutput};
 
 use crate::{
@@ -82,9 +83,15 @@ pub(crate) fn parse_psf_font(fontname: &'static str) -> Result<RawFont, PsfParse
             return Err(PsfParseError::InsufficientDataForPSF1);
         }
 
+        let page_count = total_size.div_ceil(PAGE_SIZE);
+
         // allocate memory for entire font data
-        let font_address =
-            boot::allocate_pool(PSF_DATA, total_size).map_err(PsfParseError::from)?;
+        let font_address = boot::allocate_pages(
+            boot::AllocateType::MaxAddress(PAS_VIRTUAL_MAX),
+            PSF_DATA,
+            page_count,
+        )
+        .map_err(PsfParseError::from)?;
 
         // copy header data to allocated memory
         unsafe {
@@ -131,9 +138,15 @@ pub(crate) fn parse_psf_font(fontname: &'static str) -> Result<RawFont, PsfParse
             return Err(PsfParseError::InsufficientDataForPSF2);
         }
 
+        let page_count = total_size.div_ceil(PAGE_SIZE);
+
         // allocate memory for entire font data
-        let font_address =
-            boot::allocate_pool(PSF_DATA, total_size).map_err(PsfParseError::from)?;
+        let font_address = boot::allocate_pages(
+            boot::AllocateType::MaxAddress(PAS_VIRTUAL_MAX),
+            PSF_DATA,
+            page_count,
+        )
+        .map_err(PsfParseError::from)?;
 
         // copy header data to allocated memory
         unsafe {

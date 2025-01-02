@@ -16,9 +16,14 @@ pub extern "sysv64" fn _start(bootinfo: &mut BootInfo) -> ! {
 
     memory::reclaim_loader_memory(bootinfo).unwrap();
 
+    let reserved = bootinfo.ptm.pmm().reserved_memory();
+    let used = bootinfo.ptm.pmm().used_memory();
     bootinfo
         .writer
-        .write_str("done reclaiming loader mem")
+        .write_fmt(format_args!(
+            "done reclaiming loader mem. Reserved: {} bytes, Used: {} bytes\n",
+            reserved, used
+        ))
         .unwrap();
 
     // remap loader memory to avaiable PAS offset mapping
