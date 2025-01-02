@@ -8,12 +8,14 @@ use core::{arch::asm, panic::PanicInfo};
 
 use alloc::vec::Vec;
 use boot::MemoryType;
-use framebuffer::{color::Color, raw::write::RawWriter};
+use framebuffer::{
+    color::{self, Color, BACKGROUND, ERROR, LOG, OK},
+    raw::write::RawWriter,
+};
 use graphics::{
     initialize_framebuffer,
     logger::{self, LOGGER},
-    parse_psf_font, BG_COLOR, CAPTION, FG_COLOR_CAPTION, FG_COLOR_ERROR, FG_COLOR_INFO,
-    FG_COLOR_LOG, FG_COLOR_OK,
+    parse_psf_font, CAPTION,
 };
 use log::{error, info};
 use mem::{bitmap_allocator::BitMapAllocator, KERNEL_STACK_SIZE, PAGE_SIZE};
@@ -44,12 +46,12 @@ fn main() -> Status {
             let fb_addr = framebuffer.ptr() as *mut u8 as u64;
             let fb_page_num = framebuffer.ptr().len().div_ceil(PAGE_SIZE);
 
-            let writer = RawWriter::new(font, framebuffer, FG_COLOR_LOG, BG_COLOR);
+            let writer = RawWriter::new(font, framebuffer, LOG, BACKGROUND);
 
             LOGGER.initialize(writer);
 
-            logln!(FG_COLOR_CAPTION, "{}", CAPTION);
-            logln!(FG_COLOR_CAPTION, " [BOOTLOADER]");
+            logln!(color::CAPTION, "{}", CAPTION);
+            logln!(color::CAPTION, " [BOOTLOADER]");
 
             loginfo!("Initialized framebuffer");
 
@@ -100,9 +102,9 @@ fn main() -> Status {
                 bootinfo_ptr.as_ptr() as u64
             );
 
-            log!(FG_COLOR_LOG, " [LOG  ]: Exiting boot services ");
+            log!(LOG, " [LOG  ]: Exiting boot services ");
             let memory_map = drop_boot_services(mmap_descriptors);
-            logln!(FG_COLOR_OK, "OK");
+            logln!(OK, "OK");
 
             // set memory map of boot info to the correct one
             unsafe {
@@ -127,7 +129,7 @@ fn main() -> Status {
             loginfo!("Reserved memory: {} bytes", pmm.reserved_memory());
 
             log!(
-                FG_COLOR_LOG,
+                LOG,
                 " [LOG  ]: Initializing higher-half kernel address space "
             );
 
@@ -140,7 +142,7 @@ fn main() -> Status {
             )
             .expect("Error during `initialize_address_space`");
 
-            logln!(FG_COLOR_OK, "OK");
+            logln!(OK, "OK");
             loginfo!("Switchted to kernel page mappings");
             if nx {
                 loginfo!("Enabled NO-EXECUTE CPU feature");
@@ -234,7 +236,7 @@ fn drop_boot_services(mut mmap_descriptors: Vec<NebulaMemoryDescriptor>) -> Nebu
 
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
-    log!(FG_COLOR_ERROR, " [ERROR]: ");
-    logln!(FG_COLOR_LOG, "Panic orccurred: \n{:#?}", info);
+    log!(ERROR, " [ERROR]: ");
+    logln!(LOG, "Panic orccurred: \n{:#?}", info);
     hal::hlt_loop();
 }

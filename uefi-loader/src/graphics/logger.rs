@@ -14,7 +14,7 @@ macro_rules! log {
 
 #[macro_export]
 macro_rules! logln {
-    () => {$crate::graphics::logger::_log(format_args!("\n"), FG_COLOR_LOG)};
+    () => {$crate::graphics::logger::_log(format_args!("\n"), framebuffer::color::LOG)};
     ($fg:expr, $($arg:tt)*) => {
          $crate::graphics::logger::_log(format_args!("{}\n", format_args!($($arg)*)), $fg)
     };
@@ -23,22 +23,22 @@ macro_rules! logln {
 #[macro_export]
 macro_rules! loginfo {
     ($($arg:tt)*) => {
-        logln!(FG_COLOR_INFO," [INFO ]: {}", format_args!($($arg)*));
+        logln!(framebuffer::color::INFO," [INFO ]: {}", format_args!($($arg)*));
     };
 }
 #[macro_export]
 macro_rules! validate {
     ($result:expr, $msg:expr) => {{
-        log!(FG_COLOR_LOG, " [LOG  ]: {}", $msg);
+        log!(framebuffer::color::LOG, " [LOG  ]: {}", $msg);
         match $result {
             Ok(value) => {
-                logln!(FG_COLOR_OK, " OK");
+                logln!(framebuffer::color::OK, " OK");
                 value
             }
             Err(err) => {
                 logln!();
-                log!(FG_COLOR_ERROR, " [ERROR]: ");
-                logln!(FG_COLOR_LOG, "{}", err);
+                log!(framebuffer::color::ERROR, " [ERROR]: ");
+                logln!(framebuffer::color::LOG, "{}", err);
                 return Status::UNSUPPORTED;
             }
         }

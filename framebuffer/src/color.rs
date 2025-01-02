@@ -1,3 +1,10 @@
+pub const LOG: Color = Color::new(255, 255, 255);
+pub const INFO: Color = Color::new(160, 160, 160);
+pub const ERROR: Color = Color::new(255, 0, 0);
+pub const OK: Color = Color::new(0, 255, 100);
+pub const CAPTION: Color = Color::new(255, 255, 102);
+pub const BACKGROUND: Color = Color::new(0, 0, 0);
+
 #[derive(Copy, Clone, Debug, Default)]
 pub struct Color {
     red: u8,
