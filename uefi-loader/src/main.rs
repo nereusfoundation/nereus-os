@@ -49,9 +49,9 @@ fn main() -> Status {
             LOGGER.initialize(writer);
 
             logln!(FG_COLOR_CAPTION, "{}", CAPTION);
+            logln!(FG_COLOR_CAPTION, " [BOOTLOADER]");
 
-            log!(FG_COLOR_LOG, " [LOG  ]: Initializing framebuffer ");
-            logln!(FG_COLOR_OK, "OK");
+            loginfo!("Initialized framebuffer");
 
             loginfo!(
                 "Framebuffer address: {:#x}, pages: {:#x}",
