@@ -6,3 +6,5 @@ edition = "2021"
 [dependencies]
 bootinfo = { path = "../bootinfo" }
 mem = { path = "../mem" }
+framebuffer = { path = "../framebuffer" }
+hal = { path = "../hal" }

@@ -6,6 +6,6 @@ use mem::{map::MemoryMap, paging::ptm::PageTableManager};
 #[derive(Debug)]
 pub struct BootInfo {
     pub mmap: MemoryMap,
-    pub writer: RawWriter,
+    pub writer: Option<RawWriter>,
     pub ptm: PageTableManager,
 }

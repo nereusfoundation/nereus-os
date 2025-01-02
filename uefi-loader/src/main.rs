@@ -155,7 +155,7 @@ fn main() -> Status {
             bootinfo_ref.ptm = vas.manager;
 
             // assign writer to bootinfo
-            bootinfo_ref.writer = logger::take_writer().unwrap();
+            bootinfo_ref.writer = logger::take_writer();
 
             unsafe {
                 asm!( "mov rdi, {1}", "mov rsp, {2}", "jmp {0}", in(reg) kernel_elf.entry(), in(reg) vas.bootinfo,  in(reg) vas.stack.top(), options(noreturn));

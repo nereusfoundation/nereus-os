@@ -2,31 +2,26 @@
 #![no_main]
 
 use bootinfo::BootInfo;
-use core::{fmt::Write, panic::PanicInfo};
+use core::panic::PanicInfo;
+use framebuffer::color::{self};
+use graphics::LOGGER;
 
+mod graphics;
 mod memory;
 
 #[no_mangle]
 pub extern "sysv64" fn _start(bootinfo: &mut BootInfo) -> ! {
-    // todo: set up proper logger
-    bootinfo
-        .writer
-        .write_str(" [INFO ]: Hello nebula kernel!\n")
-        .unwrap();
-
+    // set up kernel logger
+    assert!(
+        bootinfo.writer.is_some(),
+        "logger must have been initialized in loader"
+    );
+    LOGGER.initialize(bootinfo.writer.take().unwrap());
+    println!(color::CAPTION, " [KERNEL]");
+    log!("Reclaiming loader memory ");
     memory::reclaim_loader_memory(bootinfo).unwrap();
+    println!(color::OK, "OK");
 
-    let reserved = bootinfo.ptm.pmm().reserved_memory();
-    let used = bootinfo.ptm.pmm().used_memory();
-    bootinfo
-        .writer
-        .write_fmt(format_args!(
-            "done reclaiming loader mem. Reserved: {} bytes, Used: {} bytes\n",
-            reserved, used
-        ))
-        .unwrap();
-
-    // remap loader memory to avaiable PAS offset mapping
     hlt();
 }
 
