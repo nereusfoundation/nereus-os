@@ -21,17 +21,15 @@ pub extern "sysv64" fn _start(bootinfo: &mut BootInfo) -> ! {
     log!("Reclaiming loader memory ");
     memory::reclaim_loader_memory(bootinfo).unwrap();
     println!(color::OK, "OK");
+    panic!("this is a test");
 
-    hlt();
+    // hal::hlt_loop();
 }
 
 #[panic_handler]
-fn panic(_info: &PanicInfo) -> ! {
-    hlt();
-}
+fn panic(info: &PanicInfo) -> ! {
+    print!(color::ERROR, " [ERROR]: ");
+    println!(color::LOG, "Panic orccurred: \n{:#?}\n", info);
 
-fn hlt() -> ! {
-    loop {
-        unsafe { core::arch::asm!("hlt") }
-    }
+    hal::hlt_loop();
 }
