@@ -2,6 +2,7 @@
 
 use core::arch::asm;
 
+pub mod instructions;
 pub mod interrupts;
 pub mod registers;
 

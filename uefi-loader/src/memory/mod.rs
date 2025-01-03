@@ -1,7 +1,7 @@
 use core::{arch::asm, ptr};
 
 use ::bootinfo::BootInfo;
-use hal::registers::msr::{efer::Efer, ModelSpecificRegister};
+use hal::registers::msr::{efer::Efer, msr_guard::Msr, ModelSpecificRegister};
 use mem::{
     bitmap_allocator::BitMapAllocator,
     error::FrameAllocatorError,
@@ -44,21 +44,26 @@ pub(crate) fn initialize_address_space(
     old_stack: KernelStack,
     fb_base: u64,
     fb_page_count: usize,
+    msr: Option<Msr>,
 ) -> Result<VirtualAddressSpace, VasError> {
     assert_ne!(bootinfo, ptr::null_mut());
     let bootinfo_ref = unsafe { bootinfo.as_mut().expect("bootinfo ptr must be valid") };
 
-    // todo: fix bug that causes this to freeze on some machines
-    // enable no-execute feature if available
-    bootinfo_ref.nx = if let Ok(mut efer) = Efer::read() {
-        efer.insert(Efer::NXE);
-        unsafe {
-            <Efer as ModelSpecificRegister>::write_raw(efer.bits());
+    bootinfo_ref.nx = false;
+    if let Some(msr) = msr {
+        if Efer::nx_available(msr.get_cpuid()) {
+            // Safety: We are in privilege level 0.
+            if let Ok(mut efer) = unsafe { Efer::read(msr) } {
+                efer.insert(Efer::NXE);
+                bootinfo_ref.nx = true;
+
+                // Safety: We are in privilege level 0.
+                unsafe {
+                    efer.write(msr).unwrap();
+                }
+            }
         }
-        true
-    } else {
-        false
-    };
+    }
 
     let nx_flags = if bootinfo_ref.nx {
         PageEntryFlags::default_nx()

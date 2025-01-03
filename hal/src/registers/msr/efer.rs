@@ -1,6 +1,6 @@
-use core::arch::x86_64::__cpuid;
+use crate::instructions::cpuid::Cpuid;
 
-use super::{cpu_has_msr, ModelSpecificRegister, MsrError};
+use super::{ModelSpecificRegister, Msr};
 use bitflags::bitflags;
 
 const IA32_EFER: u32 = 0xC000_0080;
@@ -31,21 +31,32 @@ bitflags! {
         // bits 16-63 reserved
     }
 }
-impl ModelSpecificRegister for Efer {
-    const MSR_INDEX: u32 = IA32_EFER;
 
-    fn write(self) -> Result<(), MsrError> {
-        if cpu_has_msr()? && (!self.contains(Efer::NXE) || Self::nx_available()) {
-            unsafe { Self::write_raw(self.bits()) }
+#[derive(Debug, thiserror_no_std::Error)]
+pub enum EferError {
+    #[error("NXE was specified, but is not available on this CPU")]
+    NXEUnavailable,
+}
+
+// Safety: IA32_EFER is a valid MSR index.
+unsafe impl ModelSpecificRegister for Efer {
+    const MSR_INDEX: u32 = IA32_EFER;
+    type ReadError = ();
+    type WriteError = EferError;
+
+    unsafe fn write(self, msr: Msr) -> Result<(), EferError> {
+        if !self.contains(Efer::NXE) || Self::nx_available(msr.get_cpuid()) {
+            // Safety: Caller guarantees that we are in privilege level 0, Self::MSR_INDEX is a valid index.
+            unsafe { msr.write(Self::MSR_INDEX, self.bits()) }
             Ok(())
         } else {
-            Err(MsrError::MsrFeatureMissing)
+            Err(EferError::NXEUnavailable)
         }
     }
 }
 impl Efer {
-    /// Whether the NX feature is available to the CPU
-    pub fn nx_available() -> bool {
-        unsafe { __cpuid(0x80000001).edx & (1 << 20) != 0 }
+    /// Check whether the NX feature is available to the CPU
+    pub fn nx_available(cpuid: Cpuid) -> bool {
+        unsafe { cpuid.get(0x80000001) }.edx & (1 << 20) != 0
     }
 }

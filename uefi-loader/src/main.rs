@@ -17,6 +17,7 @@ use graphics::{
     logger::{self, LOGGER},
     parse_psf_font, CAPTION,
 };
+use hal::{instructions::cpuid::Cpuid, registers::msr::msr_guard::Msr};
 use log::{error, info};
 use mem::{bitmap_allocator::BitMapAllocator, KERNEL_STACK_SIZE, PAGE_SIZE};
 use memory::{
@@ -133,12 +134,15 @@ fn main() -> Status {
                 " [LOG  ]: Initializing higher-half kernel address space "
             );
 
+            let cpuid = Cpuid::new();
+            let msr = cpuid.and_then(|x| Msr::new(x));
             let vas = memory::initialize_address_space(
                 bootinfo_ptr.as_ptr(),
                 pmm,
                 kernel_stack,
                 fb_addr,
                 fb_page_num,
+                msr,
             )
             .expect("Error during `initialize_address_space`");
 
