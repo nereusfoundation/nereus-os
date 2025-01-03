@@ -21,9 +21,7 @@ pub extern "sysv64" fn _start(bootinfo: &mut BootInfo) -> ! {
     log!("Reclaiming loader memory ");
     memory::reclaim_loader_memory(bootinfo).unwrap();
     println!(color::OK, "OK");
-    panic!("this is a test");
-
-    // hal::hlt_loop();
+    hal::hlt_loop();
 }
 
 #[panic_handler]

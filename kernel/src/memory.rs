@@ -7,6 +7,11 @@ use mem::{
 /// Reclaim the memory previously allocated by the bootloader
 pub(super) fn reclaim_loader_memory(bootinfo: &mut BootInfo) -> Result<(), FrameAllocatorError> {
     let mmap = bootinfo.mmap;
+    let flags = if bootinfo.nx {
+        PageEntryFlags::default_nx()
+    } else {
+        PageEntryFlags::default()
+    };
 
     // remap loader
     mmap.descriptors()
@@ -24,7 +29,7 @@ pub(super) fn reclaim_loader_memory(bootinfo: &mut BootInfo) -> Result<(), Frame
                 bootinfo.ptm.map_memory(
                     desc.phys_start + PAS_VIRTUAL + PAGE_SIZE as u64 * page,
                     desc.phys_start + PAGE_SIZE as u64 * page,
-                    PageEntryFlags::default_nx(),
+                    flags,
                 )
             })
         })?;

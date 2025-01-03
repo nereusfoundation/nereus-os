@@ -1,7 +1,7 @@
 use core::{arch::asm, ptr};
 
 use ::bootinfo::BootInfo;
-use hal::msr::{efer::Efer, ModelSpecificRegister};
+use hal::registers::msr::{efer::Efer, ModelSpecificRegister};
 use mem::{
     bitmap_allocator::BitMapAllocator,
     error::FrameAllocatorError,
@@ -13,7 +13,7 @@ use mem::{
 use stack::KernelStack;
 use uefi::boot::MemoryType;
 
-use crate::graphics;
+use crate::{error::VasError, graphics};
 
 pub(crate) mod bootinfo;
 pub(crate) mod stack;
@@ -44,10 +44,25 @@ pub(crate) fn initialize_address_space(
     old_stack: KernelStack,
     fb_base: u64,
     fb_page_count: usize,
-) -> Result<(VirtualAddressSpace, bool), FrameAllocatorError> {
-    let mut nx = false;
+) -> Result<VirtualAddressSpace, VasError> {
     assert_ne!(bootinfo, ptr::null_mut());
     let bootinfo_ref = unsafe { bootinfo.as_mut().expect("bootinfo ptr must be valid") };
+
+    // todo: fix bug that causes this to freeze on some machines
+    // enable no-execute feature if available
+    bootinfo_ref.nx = if let Ok(mut efer) = Efer::read() {
+        efer.insert(Efer::NXE);
+        efer.write()?;
+        true
+    } else {
+        false
+    };
+
+    let nx_flags = if bootinfo_ref.nx {
+        PageEntryFlags::default_nx()
+    } else {
+        PageEntryFlags::default()
+    };
 
     let memory_map = bootinfo_ref.mmap;
 
@@ -83,7 +98,7 @@ pub(crate) fn initialize_address_space(
                 // map part of physical address space to higher half
                 NebulaMemoryType::Available => {
                     if desc.phys_end < PAS_VIRTUAL_MAX {
-                        (PAS_VIRTUAL, desc.phys_start, PageEntryFlags::default_nx())
+                        (PAS_VIRTUAL, desc.phys_start, nx_flags)
                     } else {
                         return Ok(());
                     }
@@ -93,11 +108,11 @@ pub(crate) fn initialize_address_space(
                 NebulaMemoryType::KernelStack => (
                     KERNEL_STACK_VIRTUAL,
                     desc.phys_start - first_stack_addr,
-                    PageEntryFlags::default_nx(),
+                    nx_flags,
                 ),
                 // map kernel data same as available PAS
                 NebulaMemoryType::KernelData | NebulaMemoryType::AcpiData => {
-                    (PAS_VIRTUAL, desc.phys_start, PageEntryFlags::default_nx())
+                    (PAS_VIRTUAL, desc.phys_start, nx_flags)
                 }
                 NebulaMemoryType::KernelCode => (
                     KERNEL_CODE_VIRTUAL,
@@ -122,16 +137,8 @@ pub(crate) fn initialize_address_space(
     // identity map framebuffer (later managed by VMM)
     (0..fb_page_count).try_for_each(|page| {
         let address = fb_base + (page * PAGE_SIZE) as u64;
-        manager.map_memory(address, address, PageEntryFlags::default_nx())
+        manager.map_memory(address, address, nx_flags)
     })?;
-
-    // todo: fix bug that causes this to freeze on some machines
-    // enable no-execute feature if available
-    if let Some(mut efer) = Efer::read() {
-        nx = true;
-        efer.insert(Efer::NXE);
-        efer.write();
-    }
 
     // update bootinfo values
     unsafe {
@@ -167,12 +174,9 @@ pub(crate) fn initialize_address_space(
         manager.pmm().update_memory_map_ptr(PAS_VIRTUAL);
     }
 
-    Ok((
-        VirtualAddressSpace {
-            bootinfo,
-            manager,
-            stack,
-        },
-        nx,
-    ))
+    Ok(VirtualAddressSpace {
+        bootinfo,
+        manager,
+        stack,
+    })
 }

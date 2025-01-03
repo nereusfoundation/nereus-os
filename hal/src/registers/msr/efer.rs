@@ -1,6 +1,6 @@
 use core::arch::x86_64::__cpuid;
 
-use super::{cpu_has_msr, set_msr, ModelSpecificRegister};
+use super::{cpu_has_msr, ModelSpecificRegister, MsrError};
 use bitflags::bitflags;
 
 const IA32_EFER: u32 = 0xC000_0080;
@@ -34,12 +34,12 @@ bitflags! {
 impl ModelSpecificRegister for Efer {
     const MSR_INDEX: u32 = IA32_EFER;
 
-    fn write(self) -> bool {
-        if unsafe { cpu_has_msr() } && (!self.contains(Self::NXE) || Self::nx_available()) {
-            unsafe { set_msr(IA32_EFER, self.bits()) }
-            true
+    fn write(self) -> Result<(), MsrError> {
+        if cpu_has_msr()? && (!self.contains(Efer::NXE) || Self::nx_available()) {
+            unsafe { Self::write_raw(self.bits()) }
+            Ok(())
         } else {
-            false
+            Err(MsrError::MsrFeatureMissing)
         }
     }
 }

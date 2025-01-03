@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 bitflags = "2.6.0"
+thiserror-no-std = "2.0.2"
 
 [build-dependencies]
 cc = "1.0"

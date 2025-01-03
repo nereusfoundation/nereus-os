@@ -1,4 +1,6 @@
 use framebuffer::error::FrameBufferError;
+use hal::registers::msr::MsrError;
+use mem::error::FrameAllocatorError;
 
 #[derive(Debug, thiserror_no_std::Error)]
 pub(crate) enum FrameBufferErrorExt {
@@ -42,4 +44,12 @@ pub(crate) enum ElfParseError {
     Goblin(#[from] goblin::error::Error),
     #[error("Invalid ELF-format, 64-bit is required")]
     InvalidFormat,
+}
+
+#[derive(Debug, thiserror_no_std::Error)]
+pub(crate) enum VasError {
+    #[error("Msr error: {0}")]
+    Msr(#[from] MsrError),
+    #[error("Frame Allocator error: {0}")]
+    FrameAllocator(#[from] FrameAllocatorError),
 }

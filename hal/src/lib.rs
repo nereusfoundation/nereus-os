@@ -1,11 +1,9 @@
 #![no_std]
 
-use core::arch::{asm, global_asm};
-
-global_asm!(include_str!("asm/msr.S"));
+use core::arch::asm;
 
 pub mod interrupts;
-pub mod msr;
+pub mod registers;
 
 #[inline]
 pub fn hlt_loop() -> ! {

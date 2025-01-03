@@ -1,8 +1,6 @@
 use core::arch::asm;
 
-use rflags::RFlags;
-
-pub mod rflags;
+use crate::registers::rflags::RFlags;
 
 /// Enable interrupts
 #[inline]
