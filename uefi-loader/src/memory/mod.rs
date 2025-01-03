@@ -57,10 +57,8 @@ pub(crate) fn initialize_address_space(
                 efer.insert(Efer::NXE);
                 bootinfo_ref.nx = true;
 
-                // Safety: We are in privilege level 0.
-                unsafe {
-                    efer.write(msr).unwrap();
-                }
+                // Safety: We are in privilege level 0 and checked Efer::nx_available above.
+                unsafe { efer.write_unchecked(msr) };
             }
         }
     }

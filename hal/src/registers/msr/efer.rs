@@ -59,4 +59,13 @@ impl Efer {
     pub fn nx_available(cpuid: Cpuid) -> bool {
         unsafe { cpuid.get(0x80000001) }.edx & (1 << 20) != 0
     }
+
+    /// Write `self` to MSR.
+    ///
+    /// # Safety
+    /// This must be called in privilege level 0.
+    /// If `self` contains `Efer::NXE`, NXE must be available on this CPU.
+    pub unsafe fn write_unchecked(self, msr: Msr) {
+        unsafe { msr.write(Self::MSR_INDEX, self.bits()) }
+    }
 }
