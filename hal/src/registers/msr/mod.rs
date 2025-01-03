@@ -62,6 +62,7 @@ pub trait ModelSpecificRegister: Sized + Flags<Bits = u64> {
     ///
     /// # Safety
     /// Caller must specify a valid index and be in privilege level 0.
+    #[inline]
     unsafe fn read_raw() -> u64 {
         let (high, low): (u32, u32);
         unsafe {

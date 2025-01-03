@@ -52,7 +52,9 @@ pub(crate) fn initialize_address_space(
     // enable no-execute feature if available
     bootinfo_ref.nx = if let Ok(mut efer) = Efer::read() {
         efer.insert(Efer::NXE);
-        efer.write()?;
+        unsafe {
+            <Efer as ModelSpecificRegister>::write_raw(efer.bits());
+        }
         true
     } else {
         false
