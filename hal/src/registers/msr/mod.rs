@@ -4,7 +4,7 @@ pub mod msr_guard;
 use bitflags::Flags;
 use msr_guard::Msr;
 
-/// An MSR register.
+/// A model specific register.
 ///
 /// # Safety
 /// MSR_INDEX must be a valid index.

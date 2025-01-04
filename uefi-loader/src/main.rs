@@ -135,7 +135,7 @@ fn main() -> Status {
             );
 
             let cpuid = Cpuid::new();
-            let msr = cpuid.and_then(|x| Msr::new(x));
+            let msr = cpuid.and_then(Msr::new);
             let vas = memory::initialize_address_space(
                 bootinfo_ptr.as_ptr(),
                 pmm,
