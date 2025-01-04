@@ -129,24 +129,20 @@ fn main() -> Status {
             loginfo!("Used memory: {} bytes", pmm.used_memory());
             loginfo!("Reserved memory: {} bytes", pmm.reserved_memory());
 
-            log!(
-                LOG,
-                " [LOG  ]: Initializing higher-half kernel address space "
-            );
-
             let cpuid = Cpuid::new();
             let msr = cpuid.and_then(Msr::new);
-            let vas = memory::initialize_address_space(
-                bootinfo_ptr.as_ptr(),
-                pmm,
-                kernel_stack,
-                fb_addr,
-                fb_page_num,
-                msr,
-            )
-            .expect("Error during `initialize_address_space`");
+            let vas = validate!(
+                memory::initialize_address_space(
+                    bootinfo_ptr.as_ptr(),
+                    pmm,
+                    kernel_stack,
+                    fb_addr,
+                    fb_page_num,
+                    msr,
+                ),
+                "Initializing higher-half kernel address space"
+            );
 
-            logln!(OK, "OK");
             loginfo!("Switchted to kernel page mappings");
 
             let bootinfo_ref = unsafe { vas.bootinfo.as_mut().unwrap() };

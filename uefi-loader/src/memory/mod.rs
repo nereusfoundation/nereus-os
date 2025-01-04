@@ -13,7 +13,7 @@ use mem::{
 use stack::KernelStack;
 use uefi::boot::MemoryType;
 
-use crate::{error::VasError, graphics};
+use crate::graphics;
 
 pub(crate) mod bootinfo;
 pub(crate) mod stack;
@@ -45,7 +45,7 @@ pub(crate) fn initialize_address_space(
     fb_base: u64,
     fb_page_count: usize,
     msr: Option<Msr>,
-) -> Result<VirtualAddressSpace, VasError> {
+) -> Result<VirtualAddressSpace, FrameAllocatorError> {
     assert_ne!(bootinfo, ptr::null_mut());
     let bootinfo_ref = unsafe { bootinfo.as_mut().expect("bootinfo ptr must be valid") };
 
