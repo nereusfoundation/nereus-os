@@ -8,3 +8,6 @@ bootinfo = { path = "../bootinfo" }
 mem = { path = "../mem" }
 framebuffer = { path = "../framebuffer" }
 hal = { path = "../hal" }
+sync = { path = "../sync" }
+
+bitflags = "2.6.0"

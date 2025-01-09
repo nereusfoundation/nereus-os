@@ -23,14 +23,14 @@ macro_rules! println {
 #[macro_export]
 macro_rules! loginfo {
     ($($arg:tt)*) => {
-        println!(framebuffer::color::INFO," [INFO ]: {}", format_args!($($arg)*));
+        $crate::println!(framebuffer::color::INFO," [INFO ]: {}", format_args!($($arg)*));
     };
 }
 
 #[macro_export]
 macro_rules! log {
     ($($arg:tt)*) => {
-        print!(framebuffer::color::LOG, " [LOG  ]: {}", $($arg)*);
+        $crate::print!(framebuffer::color::LOG, " [LOG  ]: {}", $($arg)*);
     };
 }
 
