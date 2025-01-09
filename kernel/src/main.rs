@@ -33,7 +33,9 @@ pub extern "sysv64" fn _start(bootinfo: &mut BootInfo) -> ! {
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
     print!(color::ERROR, " [ERROR]: ");
-    println!(color::LOG, "Panic orccurred: \n{:#?}\n", info);
+    println!(color::LOG, "Panic occurred: \n{:#?}\n", info);
+
+    serial_println!("Panic ocurred: \n{:#?}\n", info);
 
     hal::hlt_loop();
 }
