@@ -7,6 +7,7 @@ use core::panic::PanicInfo;
 use framebuffer::color::{self};
 use graphics::LOGGER;
 
+mod gdt;
 mod graphics;
 pub(crate) mod io;
 mod memory;
@@ -24,8 +25,11 @@ pub extern "sysv64" fn _start(bootinfo: &mut BootInfo) -> ! {
     log!("Reclaiming loader memory ");
     memory::reclaim_loader_memory(bootinfo).unwrap();
     println!(color::OK, "OK");
-
-    serial_println!("Hello Console interface!");
+    log!("Loading global descriptor table ");
+    unsafe {
+        gdt::load();
+    }
+    println!(color::OK, "OK");
 
     hal::hlt_loop();
 }
