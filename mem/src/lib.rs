@@ -11,7 +11,7 @@ pub type VirtualAddress = u64;
 pub const PAGE_SIZE: usize = 0x1000;
 
 /// Size of initial kernel stack
-pub const KERNEL_STACK_SIZE: usize = 1024 * 16; // 16 KB
+pub const KERNEL_STACK_SIZE: usize = 1024 * 16 * 4; // 64 KB
 
 /// Virtual offset of kernel stack (mapping starting at 0)
 pub const KERNEL_STACK_VIRTUAL: VirtualAddress = 0xffff_ffff_ffff_ffff - KERNEL_STACK_SIZE as u64;
