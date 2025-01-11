@@ -40,10 +40,12 @@ pub extern "sysv64" fn _start(bootinfo: &mut BootInfo) -> ! {
     }
 
     println!(color::OK, "OK");
-
     unsafe {
-        asm!("int3", options(nomem, nostack));
+        let ptr: *const u8 = 0xdeadbeef as *const u8;
+
+        serial_println!("Value at invalid address: {}", *ptr);
     }
+
     loginfo!("Returned from IDT!");
     hal::hlt_loop();
 }

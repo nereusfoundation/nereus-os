@@ -1,15 +1,55 @@
-use core::arch::naked_asm;
+use core::arch::{asm, naked_asm};
 
+use error::{ErrorCode, PageFaultErrorCode};
 use framebuffer::color;
-use hal::cpu_state::CpuState;
+use hal::{cpu_state::CpuState, hlt_loop};
 
-use crate::println;
+use crate::{loginfo, println};
 
+mod error;
 pub(super) mod handler;
 pub(super) mod macros;
 
 fn dispatch(state: &CpuState) -> &CpuState {
-    println!(color::INFO, "Hello DEBUG Interrupt!");
+    let vector_number = state.vector_number;
+    let error_code = state.error_code;
+
+    match vector_number {
+        0 => {
+            println!(color::ERROR, " [ERROR]: division by 0 EXCEPTION");
+            hlt_loop();
+        }
+        3 => {
+            loginfo!("breakpoint EXCEPTION");
+        }
+        14 => {
+            println!(
+                color::ERROR,
+                " [ERROR]: page FAULT, error code: {:?}",
+                PageFaultErrorCode::from_bits_truncate(error_code as u32)
+            );
+            let cr2: u64;
+
+            unsafe {
+                asm!("mov {}, cr2", out(reg) cr2, options(nostack, nomem, preserves_flags));
+            }
+
+            println!(color::ERROR, " [INFO ]: faulting address: {:#x}", cr2);
+
+            hlt_loop();
+        }
+
+        unknown => {
+            println!(
+                color::ERROR,
+                " [ERROR]: unknwon EXCEPTION: {:#x}, error code (if applicable): {:?}",
+                unknown,
+                ErrorCode::from_bits_truncate(error_code as u32)
+            );
+            hlt_loop();
+        }
+    }
+
     state
 }
 

@@ -56,7 +56,7 @@ impl GateFlags {
 #[derive(Copy, Clone, Debug)]
 pub(super) enum GateType {
     /// Clears interrupt flag before calling handler
-    _InterruptGate = 0,
+    InterruptGate = 0,
     /// Does not clear interrupt flag before calling handler. Meaning interrupts can occur, while current one is being handled.
     TrapGate = 1,
 }
@@ -65,7 +65,7 @@ impl GateType {
     /// Four type bits for GateFlags
     const fn bits(&self) -> u8 {
         match self {
-            GateType::_InterruptGate => 0b1110,
+            GateType::InterruptGate => 0b1110,
             GateType::TrapGate => 0b1111,
         }
     }

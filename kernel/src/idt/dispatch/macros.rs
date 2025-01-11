@@ -31,7 +31,7 @@ macro_rules! declare_isr {
                        "push {isr_number}",
                        "jmp {interrupt_stub}",
                        isr_number = const $isr_number,
-                       interrupt_stub = sym interrupt_stub,
+                       interrupt_stub = sym $crate::idt::dispatch::interrupt_stub,
                    );
                }
            }
