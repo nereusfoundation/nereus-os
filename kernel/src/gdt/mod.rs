@@ -5,6 +5,9 @@ use mem::VirtualAddress;
 
 mod descriptor;
 
+pub(crate) const KERNEL_CS: u16 = 0x08;
+pub(crate) const KERNEL_DS: u16 = 0x10;
+
 static GDT: GlobalDescriptorTable = GlobalDescriptorTable::new();
 
 /// GDT Descriptor with size of table and pointer to the table (paging applies).
@@ -65,19 +68,21 @@ pub(super) unsafe fn load() {
     // reload segment registers
     unsafe {
         asm!(
-            "mov ax, 0x10",
+            "mov ax, {ds}",
             "mov ds, ax",
             "mov es, ax",
             "mov fs, ax",
             "mov gs, ax",
             "mov ss, ax",
             // Return Far (pops CS and IP)
-            "push 0x08",
+            "push {cs}",
             "lea {tmp}, [2f + rip]",
             "push {tmp}",
             "retfq",
             "2:",
             tmp = out(reg) _,
+            cs = const KERNEL_CS as u64,
+            ds = const KERNEL_DS as u64,
 
             options(preserves_flags)
         );
