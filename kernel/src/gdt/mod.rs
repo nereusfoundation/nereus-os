@@ -1,13 +1,15 @@
-use core::arch::asm;
+use core::{arch::asm, cell::LazyCell};
 
 use descriptor::SegmentDescriptor;
 use mem::VirtualAddress;
+use sync::spin::SpinLock;
 
 mod descriptor;
 
 pub(crate) const KERNEL_CS: u16 = 0x08;
 pub(crate) const KERNEL_DS: u16 = 0x10;
 
+static GDTR: SpinLock<LazyCell<GdtDescriptor>> = SpinLock::new(LazyCell::new(GdtDescriptor::new));
 static GDT: GlobalDescriptorTable = GlobalDescriptorTable::new();
 
 /// GDT Descriptor with size of table and pointer to the table (paging applies).
@@ -18,6 +20,15 @@ struct GdtDescriptor {
     size: u16,
     /// The linear address of the GDT (not the physical address, paging applies).
     offset: VirtualAddress,
+}
+
+impl GdtDescriptor {
+    fn new() -> GdtDescriptor {
+        GdtDescriptor {
+            size: (size_of::<GlobalDescriptorTable>() - 1) as u16,
+            offset: &GDT as *const GlobalDescriptorTable as u64,
+        }
+    }
 }
 
 /// The Global Descriptor Table contains entries telling the CPU about memory segments and their
@@ -53,16 +64,11 @@ impl GlobalDescriptorTable {
 /// Caller must guarantee that the GDT is valid.
 #[inline]
 pub(super) unsafe fn load() {
-    let gdt_ptr = &GDT as *const GlobalDescriptorTable;
-
-    let desc = GdtDescriptor {
-        size: (size_of::<GlobalDescriptorTable>() - 1) as u16,
-        offset: gdt_ptr as u64,
-    };
+    let gdtr = GDTR.lock();
 
     // load gdt
     unsafe {
-        asm!("lgdt [{}]", in(reg) &desc as *const GdtDescriptor, options(readonly, nostack, preserves_flags))
+        asm!("lgdt [{}]", in(reg) LazyCell::force(&gdtr) as *const GdtDescriptor, options(readonly, nostack, preserves_flags))
     }
 
     // reload segment registers
