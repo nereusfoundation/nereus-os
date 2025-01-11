@@ -7,7 +7,7 @@ use sync::spin::SpinLock;
 use crate::gdt::KERNEL_CS;
 
 mod descriptor;
-mod handler;
+mod dispatch;
 
 const IDT_MAX_DESCRIPTORS: usize = 256;
 

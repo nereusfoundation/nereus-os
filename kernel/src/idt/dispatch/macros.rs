@@ -1,72 +1,3 @@
-use core::arch::naked_asm;
-
-use framebuffer::color;
-
-use crate::{assign_isr, println};
-
-use super::{descriptor::GateType, InterruptDescriptorTable};
-use hal::cpu_state::CpuState;
-
-assign_isr!(
-    0, GateType::TrapGate
-    3, GateType::TrapGate);
-
-fn dispatch(state: &CpuState) -> &CpuState {
-    println!(color::INFO, "Hello DEBUG Interrupt!");
-    state
-}
-
-#[naked]
-extern "C" fn interrupt_stub() {
-    unsafe {
-        naked_asm!(
-            "push rax",
-            "push rbx",
-            "push rcx",
-            "push rdx",
-            "push rsi",
-            "push rdi",
-            "push rbp",
-            "push r8",
-            "push r9",
-            "push r10",
-            "push r11",
-            "push r12",
-            "push r13",
-            "push r14",
-            "push r15",
-            // pass rsp to the dispatch handler (stack pointer)
-            "mov rdi, rsp",
-            "call {interrupt_dispatch}",
-
-            // restore the stack pointer returned by the dispatch handler
-            "mov rsp, rax",
-
-            "pop r15",
-            "pop r14",
-            "pop r13",
-            "pop r12",
-            "pop r11",
-            "pop r10",
-            "pop r9",
-            "pop r8",
-            "pop rbp",
-            "pop rdi",
-            "pop rsi",
-            "pop rdx",
-            "pop rcx",
-            "pop rbx",
-            "pop rax",
-            // remove vector number + error code (16 bytes)
-            "add rsp, 16",
-            "iretq",
-            interrupt_dispatch = sym dispatch
-        );
-    }
-}
-
-// Interrupt Service Routines
-
 /// Declare an Inetrrupt Service Routine
 #[macro_export]
 macro_rules! declare_isr {
@@ -83,7 +14,7 @@ macro_rules! declare_isr {
                        "push {isr_number}",
                        "jmp {interrupt_stub}",
                        isr_number = const $isr_number,
-                       interrupt_stub = sym interrupt_stub,
+                       interrupt_stub = sym $crate::idt::dispatch::interrupt_stub,
                    );
                }
            }
@@ -118,8 +49,8 @@ macro_rules! assign_isr {
                 $crate::declare_isr!($($error)? $isr_number);
             )*
 
-            impl InterruptDescriptorTable {
-                pub(super) fn assign_handlers(&mut self) {
+            impl $crate::idt::InterruptDescriptorTable {
+                pub(in $crate::idt) fn assign_handlers(&mut self) {
                     $(
                         self.set_handler(
                             $isr_number,
