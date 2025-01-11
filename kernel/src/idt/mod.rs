@@ -46,15 +46,22 @@ struct InterruptDescriptorTable([GateDescriptor; IDT_MAX_DESCRIPTORS]);
 
 impl InterruptDescriptorTable {
     const fn new() -> Self {
-        Self([GateDescriptor::null(); 256])
+        Self([GateDescriptor::null(); IDT_MAX_DESCRIPTORS])
     }
 
-    const fn set_handler(&mut self, vector: usize, handler_address: u64, ist: u8, dpl: u8) {
+    const fn set_handler(
+        &mut self,
+        vector: usize,
+        handler_address: u64,
+        ist: u8,
+        dpl: u8,
+        gate_type: GateType,
+    ) {
         self.0[vector] = GateDescriptor::new(
             handler_address,
             KERNEL_CS,
             ist,
-            GateFlags::new(GateType::TrapGate, dpl, true),
+            GateFlags::new(gate_type, dpl, true),
         );
     }
 }

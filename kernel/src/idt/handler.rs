@@ -2,18 +2,14 @@ use core::arch::naked_asm;
 
 use framebuffer::color;
 
-use crate::println;
+use crate::{assign_isr, println};
 
+use super::{descriptor::GateType, InterruptDescriptorTable};
 use hal::cpu_state::CpuState;
 
-use super::InterruptDescriptorTable;
-
-impl InterruptDescriptorTable {
-    pub(super) fn assign_handlers(&mut self) {
-        self.set_handler(0, isr_stub_0 as usize as u64, 0, 0);
-        self.set_handler(3, isr_stub_3 as usize as u64, 0, 0);
-    }
-}
+assign_isr!(
+    0, GateType::TrapGate
+    3, GateType::TrapGate);
 
 fn dispatch(state: &CpuState) -> &CpuState {
     println!(color::INFO, "Hello DEBUG Interrupt!");
@@ -71,45 +67,70 @@ extern "C" fn interrupt_stub() {
 
 // Interrupt Service Routines
 
-/// Declare an Inetrrupt Service Routine that does not provide an error code.
+/// Declare an Inetrrupt Service Routine
+#[macro_export]
 macro_rules! declare_isr {
-    ($isr_ident:ident, $isr_number:expr) => {
-        #[repr(align(16))]
-        #[naked]
-        extern "C" fn $isr_ident() {
-            unsafe {
-                ::core::arch::naked_asm!(
-                    // push dummy error code
-                    "push 0",
-                    // push vector number
-                    "push {isr_number}",
-                    "jmp {interrupt_stub}",
-                    isr_number = const $isr_number,
-                    interrupt_stub = sym interrupt_stub,
-                );
-            }
+    ($isr_number:expr) => {
+        paste::paste! {
+           #[repr(align(16))]
+           #[naked]
+           extern "C" fn [<isr_stub_ $isr_number>] (){
+               unsafe {
+                   ::core::arch::naked_asm!(
+                       // push dummy error code
+                       "push 0",
+                       // push vector number
+                       "push {isr_number}",
+                       "jmp {interrupt_stub}",
+                       isr_number = const $isr_number,
+                       interrupt_stub = sym interrupt_stub,
+                   );
+               }
+           }
+        }
+    };
+    (error $isr_number:expr) => {
+        paste::paste! {
+           #[repr(align(16))]
+           #[naked]
+           extern "C" fn [<isr_stub_ $isr_number>] (){
+               unsafe {
+                   ::core::arch::naked_asm!(
+                       // push vector number
+                       "push {isr_number}",
+                       "jmp {interrupt_stub}",
+                       isr_number = const $isr_number,
+                       interrupt_stub = sym interrupt_stub,
+                   );
+               }
+           }
         }
     };
 }
 
-/// Declare an Inetrrupt Service Routine that provides an error code.
-macro_rules! declare_isr_error_code {
-    ($isr_ident:ident, $isr_number:expr) => {
-        #[repr(align(16))]
-        #[naked]
-        extern "C" fn $isr_ident() {
-            unsafe {
-                ::core::arch::naked_asm!(
-                    // push vector number
-                    "push {isr_number}",
-                    "jmp {interrupt_stub}",
-                    isr_number = const $isr_number,
-                    interrupt_stub = sym interrupt_stub,
-                );
+/// Fills IDT with the provided iSRs. Must only be called once.
+#[macro_export]
+macro_rules! assign_isr {
+    ($($isr_number:expr, $gate_type:expr $(, $error:ident)?)*) => {
+        paste::paste! {
+
+            $(
+                $crate::declare_isr!($($error)? $isr_number);
+            )*
+
+            impl InterruptDescriptorTable {
+                pub(super) fn assign_handlers(&mut self) {
+                    $(
+                        self.set_handler(
+                            $isr_number,
+                            [<isr_stub_ $isr_number>] as usize as u64,
+                            0,
+                            0,
+                            $gate_type,
+                        );
+                    )*
+                }
             }
         }
     };
 }
-
-declare_isr!(isr_stub_0, 0);
-declare_isr!(isr_stub_3, 3);

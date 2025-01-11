@@ -11,3 +11,4 @@ hal = { path = "../hal" }
 sync = { path = "../sync" }
 
 bitflags = "2.6.0"
+paste = "1.0.15"
