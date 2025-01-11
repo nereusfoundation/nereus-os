@@ -1,15 +1,18 @@
 #![no_std]
 #![no_main]
 #![feature(lazy_get)]
+#![feature(fn_align)]
+#![feature(naked_functions)]
 
 use bootinfo::BootInfo;
-use core::panic::PanicInfo;
+use core::{arch::asm, panic::PanicInfo};
 use framebuffer::color::{self};
 use graphics::LOGGER;
 
 mod gdt;
 mod graphics;
-pub(crate) mod io;
+mod idt;
+mod io;
 mod memory;
 mod serial;
 
@@ -31,6 +34,17 @@ pub extern "sysv64" fn _start(bootinfo: &mut BootInfo) -> ! {
     }
     println!(color::OK, "OK");
 
+    log!("Loading interrupt descriptor table ");
+    unsafe {
+        idt::load();
+    }
+
+    println!(color::OK, "OK");
+
+    unsafe {
+        asm!("int3", options(nomem, nostack));
+    }
+    loginfo!("Returned from IDT!");
     hal::hlt_loop();
 }
 
