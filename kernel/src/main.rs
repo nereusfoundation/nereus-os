@@ -28,25 +28,31 @@ pub extern "sysv64" fn _start(bootinfo: &mut BootInfo) -> ! {
     );
     LOGGER.initialize(bootinfo.writer.take().unwrap());
     println!(color::CAPTION, " [KERNEL]");
-    log!("Reclaiming loader memory ");
-    memory::reclaim_loader_memory(bootinfo).unwrap();
-    println!(color::OK, "OK");
-    log!("Loading global descriptor table ");
-    unsafe {
-        gdt::load();
-    }
-    println!(color::OK, "OK");
+    validate!(
+        memory::reclaim_loader_memory(bootinfo).unwrap(),
+        "Reclaiming loader memory"
+    );
 
-    log!("Loading interrupt descriptor table ");
-    unsafe {
-        idt::load();
-    }
+    // todo: tss
+    validate!(
+        unsafe {
+            gdt::load();
+        },
+        "Loading global descriptor table"
+    );
+    validate!(
+        unsafe {
+            idt::load();
+        },
+        "Loading interrupt descriptor table"
+    );
 
-    println!(color::OK, "OK");
+    // todo: proper error handling
+    validate!(
+        memory::initialize_kheap(bootinfo),
+        "Initializing kernel heap"
+    );
 
-    log!("Initializing kernel heap ");
-    memory::initialize_kheap(bootinfo);
-    println!(color::OK, "OK");
     loginfo!(
         "Heap start address: {:#x}, pages: {:#x}",
         KHEAP_VIRTUAL,

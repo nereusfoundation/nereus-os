@@ -8,45 +8,53 @@ pub(crate) static LOGGER: Writer = Writer::new();
 #[macro_export]
 macro_rules! print {
     ($fg:expr, $($arg:tt)*) => {
-         $crate::graphics::_print(format_args!($($arg)*), $fg)
+         $crate::graphics::_print(format_args!($($arg)*), $fg);
     };
 }
 
 #[macro_export]
 macro_rules! println {
-    () => {$crate::graphics::_print(format_args!("\n"), framebuffer::color::LOG)};
+    () => {$crate::graphics::_print(format_args!("\n"), ::framebuffer::color::LOG)};
     ($fg:expr, $($arg:tt)*) => {
-         $crate::graphics::_print(format_args!("{}\n", format_args!($($arg)*)), $fg)
+         $crate::graphics::_print(format_args!("{}\n", format_args!($($arg)*)), $fg);
     };
+    ($($arg:tt)*) => {
+        println!(::framebuffer::color::INFO, $($arg)*);
+    }
 }
 
 #[macro_export]
 macro_rules! loginfo {
     ($($arg:tt)*) => {
-        $crate::println!(framebuffer::color::INFO," [INFO ]: {}", format_args!($($arg)*));
+        $crate::println!(::framebuffer::color::INFO," [INFO ]: {}", format_args!($($arg)*));
     };
 }
 
 #[macro_export]
 macro_rules! log {
     ($($arg:tt)*) => {
-        $crate::print!(framebuffer::color::LOG, " [LOG  ]: {}", $($arg)*);
+        $crate::print!(::framebuffer::color::LOG, " [LOG  ]: {}", $($arg)*);
     };
 }
 
 #[macro_export]
 macro_rules! validate {
+    ($fun:stmt, $msg:expr) => {{
+        log!($msg);
+        $fun();
+        println!(::framebuffer::color::OK, " OK");
+    }};
     ($result:expr, $msg:expr) => {{
         log!($msg);
         match $result {
             Ok(value) => {
-                println!(framebuffer::color::OK, " OK");
+                println!(::framebuffer::color::OK, " OK");
                 value
             }
             Err(err) => {
                 println!();
-                print!(framebuffer::color::ERROR, " [ERROR]: ");
-                println!(framebuffer::color::LOG, "{}", err);
+                print!(::framebuffer::color::ERROR, " [ERROR]: ");
+                println!(::framebuffer::color::LOG, "{}", err);
             }
         }
     }};
