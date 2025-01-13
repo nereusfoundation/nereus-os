@@ -5,9 +5,12 @@
 #![feature(naked_functions)]
 
 use bootinfo::BootInfo;
-use core::{arch::asm, panic::PanicInfo};
+use core::panic::PanicInfo;
 use framebuffer::color::{self};
 use graphics::LOGGER;
+use mem::{KHEAP_PAGE_COUNT, KHEAP_VIRTUAL};
+
+extern crate alloc;
 
 mod gdt;
 mod graphics;
@@ -40,13 +43,16 @@ pub extern "sysv64" fn _start(bootinfo: &mut BootInfo) -> ! {
     }
 
     println!(color::OK, "OK");
-    unsafe {
-        let ptr: *const u8 = 0xdeadbeef as *const u8;
 
-        serial_println!("Value at invalid address: {}", *ptr);
-    }
+    log!("Initializing kernel heap ");
+    memory::initialize_kheap(bootinfo);
+    println!(color::OK, "OK");
+    loginfo!(
+        "Heap start address: {:#x}, pages: {:#x}",
+        KHEAP_VIRTUAL,
+        KHEAP_PAGE_COUNT
+    );
 
-    loginfo!("Returned from IDT!");
     hal::hlt_loop();
 }
 
