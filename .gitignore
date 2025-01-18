@@ -3,3 +3,4 @@
 /build
 qemu.log
 stdio.log
+mmap.txt
