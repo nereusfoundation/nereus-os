@@ -3,7 +3,6 @@
 pub mod color;
 pub mod error;
 pub mod raw;
-pub mod safe;
 
 pub const BYTES_PER_PIXEL: usize = 4;
 

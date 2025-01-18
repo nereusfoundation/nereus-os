@@ -1,9 +1,10 @@
 use core::fmt::Write;
-use framebuffer::{color::Color, raw::write::RawWriter, safe::Writer};
+use framebuffer::{color::Color, raw::write::RawWriter};
 use hal::interrupts::without_interrupts;
 use mem::VirtualAddress;
+use sync::locked::Locked;
 
-pub(crate) static LOGGER: Writer = Writer::new();
+pub(crate) static LOGGER: Locked<RawWriter> = Locked::new();
 
 #[macro_export]
 macro_rules! log {

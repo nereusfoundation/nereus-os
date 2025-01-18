@@ -10,6 +10,7 @@ use core::panic::PanicInfo;
 use framebuffer::color::{self};
 use graphics::LOGGER;
 use mem::{KHEAP_PAGE_COUNT, KHEAP_VIRTUAL};
+use memory::vmm::paging::PTM;
 
 extern crate alloc;
 
@@ -22,15 +23,27 @@ mod serial;
 
 #[no_mangle]
 pub extern "sysv64" fn _start(bootinfo: &mut BootInfo) -> ! {
-    // set up kernel logger
-    assert!(
-        bootinfo.writer.is_some(),
-        "logger must have been initialized in loader"
+    // set up global control structures
+    LOGGER.initialize(
+        bootinfo
+            .writer
+            .take()
+            .expect("logger must have been initialized in loader"),
     );
-    LOGGER.initialize(bootinfo.writer.take().unwrap());
     println!(color::CAPTION, " [KERNEL]");
+
     validate!(
-        memory::reclaim_loader_memory(bootinfo).unwrap(),
+        PTM.initialize(
+            bootinfo
+                .ptm
+                .take()
+                .expect("ptm must have been initialized in loader"),
+        ),
+        "Reinitializing page table manager"
+    );
+
+    validate!(
+        memory::vmm::paging::reclaim_loader_memory(bootinfo).unwrap(),
         "Reclaiming loader memory"
     );
 

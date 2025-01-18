@@ -153,7 +153,7 @@ fn main() -> Status {
             loginfo!("Handing control to kernel...");
 
             // assign ptm to bootinfo
-            bootinfo_ref.ptm = vas.manager;
+            bootinfo_ref.ptm = Some(vas.manager);
 
             // assign writer to bootinfo
             bootinfo_ref.writer = logger::take_writer();

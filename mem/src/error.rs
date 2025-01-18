@@ -13,10 +13,8 @@ pub enum FrameAllocatorError {
 }
 
 #[cfg(feature = "alloc")]
-#[derive(thiserror_no_std::Error)]
+#[derive(Debug, thiserror_no_std::Error)]
 pub enum HeapError {
-    #[error("Frame allocation failed: {0}")]
-    AllocationFailed(#[from] FrameAllocatorError),
     #[error("Out of memory")]
     Oom,
     #[error("Allocation out of bounds")]
