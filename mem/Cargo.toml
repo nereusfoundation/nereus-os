@@ -3,6 +3,9 @@ name = "mem"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+alloc = []
+
 [dependencies]
 bitflags = "2.6.0"
 thiserror-no-std = "2.0.2"

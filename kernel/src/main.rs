@@ -3,6 +3,7 @@
 #![feature(lazy_get)]
 #![feature(fn_align)]
 #![feature(naked_functions)]
+#![feature(once_cell_get_mut)]
 
 use bootinfo::BootInfo;
 use core::panic::PanicInfo;
@@ -47,9 +48,8 @@ pub extern "sysv64" fn _start(bootinfo: &mut BootInfo) -> ! {
         "Loading interrupt descriptor table"
     );
 
-    // todo: proper error handling
-    validate!(
-        memory::initialize_kheap(bootinfo),
+    validate!(result
+        memory::kheap::initialize(bootinfo),
         "Initializing kernel heap"
     );
 

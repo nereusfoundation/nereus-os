@@ -5,10 +5,11 @@ edition = "2021"
 
 [dependencies]
 bootinfo = { path = "../bootinfo" }
-mem = { path = "../mem" }
+mem = { path = "../mem", features = ["alloc"]}
 framebuffer = { path = "../framebuffer" }
 hal = { path = "../hal" }
 sync = { path = "../sync" }
 
 bitflags = "2.6.0"
 paste = "1.0.15"
+thiserror-no-std = "2.0.2"

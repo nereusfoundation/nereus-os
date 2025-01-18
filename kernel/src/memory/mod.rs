@@ -4,7 +4,7 @@ use mem::{
     PAS_VIRTUAL_MAX,
 };
 
-mod kheap;
+pub(super) mod kheap;
 
 /// Reclaim the memory previously allocated by the bootloader
 pub(super) fn reclaim_loader_memory(bootinfo: &mut BootInfo) -> Result<(), FrameAllocatorError> {
@@ -38,8 +38,4 @@ pub(super) fn reclaim_loader_memory(bootinfo: &mut BootInfo) -> Result<(), Frame
 
     // unsreserve loader memory
     unsafe { bootinfo.ptm.pmm().use_loader_memory() }
-}
-
-pub(super) fn initialize_kheap(bootinfo: &mut BootInfo) {
-    kheap::initialize(bootinfo);
 }

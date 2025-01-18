@@ -44,7 +44,7 @@ macro_rules! validate {
         $fun();
         println!(::framebuffer::color::OK, " OK");
     }};
-    ($result:expr, $msg:expr) => {{
+    (result $result:expr, $msg:expr) => {{
         log!($msg);
         match $result {
             Ok(value) => {

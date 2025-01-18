@@ -1,8 +1,6 @@
-// todo: add this as a feature only
+use core::alloc::Layout;
 
-use core::{alloc::Layout, ptr};
-
-use crate::{heap::align_up, VirtualAddress};
+use crate::{error::HeapError, heap::align_up, VirtualAddress};
 
 #[derive(Copy, Clone, Debug)]
 pub struct BumpAllocator {
@@ -31,11 +29,20 @@ impl BumpAllocator {
     /// Initialize the bump allocator with the given address.
     ///
     /// # Safety
-    /// Caller must guarantee that the pages for the heap are mapped.
-    pub unsafe fn init(&mut self, heap_start: VirtualAddress, heap_size: usize) {
+    /// Caller must guarantee that the pages for the heap are mapped. Returns an error if the heap
+    /// size if out of bounds.
+    pub unsafe fn init(
+        &mut self,
+        heap_start: VirtualAddress,
+        heap_size: usize,
+    ) -> Result<(), HeapError> {
         self.heap_start = heap_start;
-        self.heap_end = heap_size as VirtualAddress + heap_start;
+        self.heap_end = (heap_size as VirtualAddress)
+            .checked_add(heap_start)
+            .ok_or(HeapError::Oob)?;
         self.next = heap_start;
+
+        Ok(())
     }
 }
 
@@ -47,20 +54,20 @@ impl BumpAllocator {
     ///
     /// (Extension subtraits might provide more specific bounds on behavior, e.g., guarantee a sentinel address or a null pointer in response to a zero-size allocation request.)
     /// The allocated block of memory may or may not be initialized.
-    pub unsafe fn alloc(&mut self, layout: Layout) -> *mut u8 {
+    pub unsafe fn alloc(&mut self, layout: Layout) -> Result<*mut u8, HeapError> {
         let alloc_start = align_up(self.next, layout.align());
         let alloc_end = match alloc_start.checked_add(layout.size() as VirtualAddress) {
             Some(end) => end,
-            None => return ptr::null_mut(),
+            None => return Err(HeapError::Oob),
         };
 
         if alloc_end > self.heap_end {
             // out of memory :(
-            ptr::null_mut()
+            Err(HeapError::Oom)
         } else {
             self.next = alloc_end;
             self.allocations += 1;
-            alloc_start as *mut u8
+            Ok(alloc_start as *mut u8)
         }
     }
 

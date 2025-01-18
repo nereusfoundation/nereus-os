@@ -2,6 +2,8 @@
 
 pub mod bitmap_allocator;
 pub mod error;
+
+#[cfg(feature = "alloc")]
 pub mod heap;
 pub mod map;
 pub mod paging;

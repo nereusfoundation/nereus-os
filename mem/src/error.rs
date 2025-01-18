@@ -11,3 +11,14 @@ pub enum FrameAllocatorError {
     #[error("Operation failed - frame with the address {0} already allocated/reserved or free")]
     OperationFailed(PhysicalAddress),
 }
+
+#[cfg(feature = "alloc")]
+#[derive(thiserror_no_std::Error)]
+pub enum HeapError {
+    #[error("Frame allocation failed: {0}")]
+    AllocationFailed(#[from] FrameAllocatorError),
+    #[error("Out of memory")]
+    Oom,
+    #[error("Allocation out of bounds")]
+    Oob,
+}
