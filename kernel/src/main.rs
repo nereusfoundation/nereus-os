@@ -62,7 +62,7 @@ pub extern "sysv64" fn _start(bootinfo: &mut BootInfo) -> ! {
     );
 
     validate!(result
-        memory::kheap::initialize(bootinfo),
+        memory::kheap::initialize(),
         "Initializing kernel heap"
     );
 

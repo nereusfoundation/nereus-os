@@ -27,5 +27,7 @@ pub const PAS_VIRTUAL: VirtualAddress = 0xffff_8000_0000_0000;
 pub const PAS_VIRTUAL_MAX: VirtualAddress = KERNEL_CODE_VIRTUAL - PAS_VIRTUAL;
 /// Virtual start address of the kernel heap
 pub const KHEAP_VIRTUAL: VirtualAddress = 0xffff_ffff_c000_0000;
-/// Number of pages max. used by the kernel heap
+/// Number of pages intially used by the kernel heap
 pub const KHEAP_PAGE_COUNT: usize = 0x100;
+/// Number of max. pages used by kernel heap
+pub const KHEAP_PAGE_COUNT_MAX: usize = 0x180;

@@ -48,26 +48,20 @@ pub(crate) fn initialize_address_space(
 ) -> Result<VirtualAddressSpace, FrameAllocatorError> {
     assert_ne!(bootinfo, ptr::null_mut());
     let bootinfo_ref = unsafe { bootinfo.as_mut().expect("bootinfo ptr must be valid") };
+    let mut nx = false;
 
-    bootinfo_ref.nx = false;
     if let Some(msr) = msr {
         if Efer::nx_available(msr.get_cpuid()) {
             // Safety: We are in privilege level 0.
             if let Ok(mut efer) = unsafe { Efer::read(msr) } {
                 efer.insert(Efer::NXE);
-                bootinfo_ref.nx = true;
+                nx = true;
 
                 // Safety: We are in privilege level 0 and checked Efer::nx_available above.
                 unsafe { efer.write_unchecked(msr) };
             }
         }
     }
-
-    let nx_flags = if bootinfo_ref.nx {
-        PageEntryFlags::default_nx()
-    } else {
-        PageEntryFlags::default()
-    };
 
     let memory_map = bootinfo_ref.mmap;
 
@@ -83,7 +77,9 @@ pub(crate) fn initialize_address_space(
     // zero out new table
     unsafe { ptr::write_bytes(pml4, 0, 1) };
 
-    let mut manager = PageTableManager::new(pml4, pmm);
+    let mut manager = PageTableManager::new(pml4, pmm, nx);
+
+    let nx_flags = manager.nx_flags();
 
     let first_stack_addr = memory_map
         .descriptors()

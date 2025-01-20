@@ -146,7 +146,7 @@ fn main() -> Status {
             loginfo!("Switchted to kernel page mappings");
 
             let bootinfo_ref = unsafe { vas.bootinfo.as_mut().unwrap() };
-            if bootinfo_ref.nx {
+            if vas.manager.nx() {
                 loginfo!("Enabled NO-EXECUTE CPU feature");
             }
 

@@ -19,4 +19,6 @@ pub enum HeapError {
     Oom,
     #[error("Allocation out of bounds")]
     Oob,
+    #[error("Invalid heap block size {0}")]
+    InvalidBlockSize(usize),
 }

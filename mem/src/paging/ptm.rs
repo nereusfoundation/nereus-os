@@ -15,9 +15,13 @@ pub struct PageTableManager {
 
 impl PageTableManager {
     /// Create a new page table manager instance. By default, a virtual `offset` of 0 is used. This can be changed manually using [`PageTableManager::update_offset()`].
-    pub fn new(pml4: *mut PageTable, frame_allocator: BitMapAllocator) -> PageTableManager {
+    pub fn new(
+        pml4: *mut PageTable,
+        frame_allocator: BitMapAllocator,
+        nx: bool,
+    ) -> PageTableManager {
         PageTableManager {
-            mappings: PageTableMappings::new(pml4),
+            mappings: PageTableMappings::new(pml4, nx),
             frame_allocator,
         }
     }
@@ -37,6 +41,20 @@ impl PageTableManager {
     /// Get a mutable refernce to the physical frame allocator and page table mappings.
     pub fn inner(&mut self) -> (&mut PageTableMappings, &mut BitMapAllocator) {
         (&mut self.mappings, &mut self.frame_allocator)
+    }
+
+    /// Attempts to get NX-PageEntryFlags if NX is configured.
+    pub fn nx_flags(&self) -> PageEntryFlags {
+        if self.nx() {
+            PageEntryFlags::default_nx()
+        } else {
+            PageEntryFlags::default()
+        }
+    }
+
+    /// Whether the NX-feature is enabled.
+    pub fn nx(&self) -> bool {
+        self.mappings.nx
     }
 }
 
@@ -60,11 +78,17 @@ pub struct PageTableMappings {
     pml4: *mut PageTable,
     /// Offset used to access page tables after enabling new paging scheme. Defaults to 0.
     offset: VirtualAddress,
+    /// Whether to map certain pages as non-executable
+    nx: bool,
 }
 
 impl PageTableMappings {
-    pub fn new(pml4: *mut PageTable) -> PageTableMappings {
-        PageTableMappings { pml4, offset: 0 }
+    pub fn new(pml4: *mut PageTable, nx: bool) -> PageTableMappings {
+        PageTableMappings {
+            pml4,
+            offset: 0,
+            nx,
+        }
     }
 }
 

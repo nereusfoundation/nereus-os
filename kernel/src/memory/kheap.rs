@@ -1,8 +1,14 @@
-use bootinfo::BootInfo;
-use core::{alloc::GlobalAlloc, ptr};
+use core::{
+    alloc::{GlobalAlloc, Layout},
+    ptr::{self, NonNull},
+};
 use mem::{
-    error::HeapError, heap::bump::BumpAllocator, paging::PageEntryFlags, KHEAP_PAGE_COUNT,
-    KHEAP_VIRTUAL, PAGE_SIZE,
+    error::HeapError,
+    heap::{
+        align_up,
+        linked_list::{LinkedListAllocator, ListNode},
+    },
+    KHEAP_PAGE_COUNT, KHEAP_VIRTUAL, PAGE_SIZE,
 };
 use sync::locked::Locked;
 
@@ -11,16 +17,13 @@ use super::vmm::paging::{PagingError, PTM};
 #[global_allocator]
 static ALLOCATOR: HeapWrapper = HeapWrapper(Locked::new());
 
-pub(crate) fn initialize(bootinfo: &mut BootInfo) -> Result<(), HeapErrorExt> {
-    let flags = if bootinfo.nx {
-        PageEntryFlags::default_nx()
-    } else {
-        PageEntryFlags::default()
-    };
+pub(crate) fn initialize() -> Result<(), HeapErrorExt> {
     let mut lock = PTM.locked();
     let ptm = lock
         .get_mut()
         .ok_or(HeapErrorExt::Paging(PagingError::PtmUnitialized))?;
+
+    let flags = ptm.nx_flags();
 
     for page in 0..KHEAP_PAGE_COUNT {
         let physical_address = ptm
@@ -37,28 +40,54 @@ pub(crate) fn initialize(bootinfo: &mut BootInfo) -> Result<(), HeapErrorExt> {
     }
 
     let mut lock = ALLOCATOR.0.locked();
-    let heap = lock.get_mut_or_init(BumpAllocator::new);
-    unsafe {
-        heap.init(KHEAP_VIRTUAL, KHEAP_PAGE_COUNT * PAGE_SIZE)?;
-    }
+    let instance =
+        unsafe { LinkedListAllocator::try_new(KHEAP_VIRTUAL, KHEAP_PAGE_COUNT * PAGE_SIZE)? };
+    lock.get_mut_or_init(|| instance);
 
     Ok(())
 }
 
-struct HeapWrapper(Locked<BumpAllocator>);
+struct HeapWrapper(Locked<LinkedListAllocator>);
 
 unsafe impl GlobalAlloc for HeapWrapper {
     unsafe fn alloc(&self, layout: core::alloc::Layout) -> *mut u8 {
-        let mut bump = self.0.locked();
-        bump.get_mut()
-            .map(|b| b.alloc(layout).unwrap_or(ptr::null_mut()))
-            .unwrap_or(ptr::null_mut())
+        let mut heap = ALLOCATOR.0.locked();
+        let size = align_up(layout.size() as u64, layout.align()) as usize;
+        if let Some(heap) = heap.get_mut() {
+            if let Ok(fit_node) = heap.find_fit(size) {
+                if heap.split_block(fit_node, size).is_ok() {
+                    return fit_node.as_ptr().add(1) as *mut u8;
+                }
+            } else {
+                let mut ptm = PTM.locked();
+                if let Some(ptm) = ptm.get_mut() {
+                    // expand heap
+                    if heap.expand(size, ptm).is_ok() {
+                        if let Ok(fit_node) = heap.find_fit(size) {
+                            if heap.split_block(fit_node, size).is_ok() {
+                                return fit_node.as_ptr().add(1) as *mut u8;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        ptr::null_mut()
     }
+    unsafe fn dealloc(&self, ptr: *mut u8, _layout: Layout) {
+        if ptr.is_null() {
+            return;
+        }
+        let mut hlock = self.0.locked();
+        if let Some(heap) = hlock.get_mut() {
+            let node_ptr = unsafe { (ptr as *mut ListNode).sub(1) };
 
-    unsafe fn dealloc(&self, ptr: *mut u8, layout: core::alloc::Layout) {
-        let mut bump = self.0.locked();
-        if let Some(bump) = bump.get_mut() {
-            bump.dealloc(ptr, layout);
+            let mut node = unsafe { NonNull::new_unchecked(node_ptr) };
+            let node_ref = unsafe { node.as_mut() };
+            node_ref.free();
+            unsafe {
+                heap.merge_blocks(node);
+            }
         }
     }
 }

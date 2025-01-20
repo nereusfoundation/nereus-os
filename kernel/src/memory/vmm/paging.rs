@@ -1,9 +1,6 @@
 use bootinfo::BootInfo;
 use mem::paging::ptm::PageTableManager;
-use mem::{
-    error::FrameAllocatorError, map::MemoryType, paging::PageEntryFlags, PAGE_SIZE, PAS_VIRTUAL,
-    PAS_VIRTUAL_MAX,
-};
+use mem::{error::FrameAllocatorError, map::MemoryType, PAGE_SIZE, PAS_VIRTUAL, PAS_VIRTUAL_MAX};
 use sync::locked::Locked;
 
 /// Global page table manager, used before the Virtual Memory Manager is set up.
@@ -12,14 +9,10 @@ pub(crate) static PTM: Locked<PageTableManager> = Locked::new();
 /// Reclaims the memory previously allocated by the bootloader
 pub(crate) fn reclaim_loader_memory(bootinfo: &mut BootInfo) -> Result<(), PagingError> {
     let mmap = bootinfo.mmap;
-    let flags = if bootinfo.nx {
-        PageEntryFlags::default_nx()
-    } else {
-        PageEntryFlags::default()
-    };
     let mut locked = PTM.locked();
     let ptm = locked.get_mut().ok_or(PagingError::PtmUnitialized)?;
 
+    let flags = ptm.nx_flags();
     // remap loader
     mmap.descriptors()
         .iter()
