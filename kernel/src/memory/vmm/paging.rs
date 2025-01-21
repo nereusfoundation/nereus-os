@@ -1,9 +1,13 @@
 use bootinfo::BootInfo;
 use mem::paging::ptm::PageTableManager;
+use mem::VirtualAddress;
 use mem::{map::MemoryType, PAGE_SIZE, PAS_VIRTUAL, PAS_VIRTUAL_MAX};
 use sync::locked::Locked;
 
+use crate::graphics::LOGGER;
+
 use super::error::PagingError;
+use super::{AllocationType, VmFlags, VmmError, VMM};
 
 /// Global page table manager, used before the Virtual Memory Manager is set up.
 pub(crate) static PTM: Locked<PageTableManager> = Locked::new();
@@ -39,4 +43,40 @@ pub(crate) fn reclaim_loader_memory(bootinfo: &mut BootInfo) -> Result<(), Pagin
 
     // unsreserve loader memory
     unsafe { ptm.pmm().use_loader_memory().map_err(PagingError::from) }
+}
+
+/// Remaps the framebuffer from the initial identity-mapping to MMIO managed by the VMM.
+pub(crate) fn remap_framebuffer() -> Result<(), VmmError> {
+    let mut llocked = LOGGER.locked();
+    let logger = llocked
+        .get_mut()
+        .expect("logger must be initialized when remapping framebuffer");
+
+    let mut vlocked = VMM.locked();
+    let vmm = vlocked.get_mut().ok_or(VmmError::VmmUnitialized)?;
+
+    let framebuffer = logger.framebuffer().ptr();
+    let old_address = framebuffer as *mut u8 as VirtualAddress;
+    let page_count = framebuffer.len().div_ceil(PAGE_SIZE);
+
+    // map the framebuffer as MMIO
+    let address = vmm.alloc(
+        framebuffer.len(),
+        VmFlags::WRITE | VmFlags::MMIO,
+        AllocationType::Address(old_address),
+    )?;
+
+    // unmap the old identity-mapping
+    (0..page_count).for_each(|page| {
+        vmm.ptm()
+            .mappings()
+            .unmap_memory(old_address + (page * PAGE_SIZE) as u64)
+            .expect("old framebuffer addresses must be mapped");
+    });
+
+    unsafe {
+        logger.framebuffer().update_ptr(address as *mut u8);
+    }
+
+    Ok(())
 }

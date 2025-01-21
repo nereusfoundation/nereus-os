@@ -33,7 +33,7 @@ impl RawWriter {
 }
 
 impl RawWriter {
-    /// Get current foreground and background color
+    /// Get current foreground and background color.
     pub fn colors(&self) -> (Color, Color) {
         (self.fg_color, self.bg_color)
     }
@@ -43,9 +43,14 @@ impl RawWriter {
         self.bg_color = bg_color;
     }
 
-    /// Retrieve a mutable reference of writer's font data
+    /// Retrieves a mutable reference of writer's font data.
     pub fn font(&mut self) -> &mut RawFont {
         &mut self.font
+    }
+
+    /// Retrieves a mutable reference to the underlying raw framebuffer.
+    pub fn framebuffer(&mut self) -> &mut RawFrameBuffer {
+        &mut self.framebuffer
     }
 }
 

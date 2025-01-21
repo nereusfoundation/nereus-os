@@ -71,3 +71,14 @@ impl RawFrameBuffer {
         self.format
     }
 }
+
+impl RawFrameBuffer {
+    /// Update the address of the framebuffer
+    ///
+    /// # Safety
+    /// The caller must ensure that the address is valid and mapped.
+    pub unsafe fn update_ptr(&mut self, address: *mut u8) {
+        let len = self.ptr().len();
+        self.ptr = slice_from_raw_parts_mut(address, len)
+    }
+}

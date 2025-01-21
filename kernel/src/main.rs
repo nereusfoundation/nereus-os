@@ -77,6 +77,9 @@ pub extern "sysv64" fn _start(bootinfo: &mut BootInfo) -> ! {
         "Initializing virtual memory manager"
     );
 
+    validate!(result
+         memory::vmm::paging::remap_framebuffer(), 
+         "Remapping framebuffer as MMIO");
     hal::hlt_loop();
 }
 
