@@ -31,3 +31,7 @@ pub const KHEAP_VIRTUAL: VirtualAddress = 0xffff_ffff_c000_0000;
 pub const KHEAP_PAGE_COUNT: usize = 0x100;
 /// Number of max. pages used by kernel heap
 pub const KHEAP_PAGE_COUNT_MAX: usize = 0x180;
+/// Virtual start address of virtual memory management blocks
+pub const VMM_VIRTUAL: VirtualAddress = 0xffff_ffff_d000_0000;
+/// Number of pages used by the virtual memory manager
+pub const VMM_PAGE_COUNT: usize = 0x100;

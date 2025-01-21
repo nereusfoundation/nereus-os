@@ -12,7 +12,7 @@ use mem::{
 };
 use sync::locked::Locked;
 
-use super::vmm::paging::{PagingError, PTM};
+use super::vmm::{error::PagingError, paging::PTM, VMM};
 
 #[global_allocator]
 static ALLOCATOR: HeapWrapper = HeapWrapper(Locked::new());
@@ -59,6 +59,7 @@ unsafe impl GlobalAlloc for HeapWrapper {
                     return fit_node.as_ptr().add(1) as *mut u8;
                 }
             } else {
+                // check for PTM
                 let mut ptm = PTM.locked();
                 if let Some(ptm) = ptm.get_mut() {
                     // expand heap
@@ -66,6 +67,20 @@ unsafe impl GlobalAlloc for HeapWrapper {
                         if let Ok(fit_node) = heap.find_fit(size) {
                             if heap.split_block(fit_node, size).is_ok() {
                                 return fit_node.as_ptr().add(1) as *mut u8;
+                            }
+                        }
+                    }
+                }
+                // check for VMM instead
+                else {
+                    drop(ptm);
+                    let mut vmm = VMM.locked();
+                    if let Some(vmm) = vmm.get_mut() {
+                        if heap.expand(size, vmm.ptm()).is_ok() {
+                            if let Ok(fit_node) = heap.find_fit(size) {
+                                if heap.split_block(fit_node, size).is_ok() {
+                                    return fit_node.as_ptr().add(1) as *mut u8;
+                                }
                             }
                         }
                     }

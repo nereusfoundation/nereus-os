@@ -10,7 +10,7 @@ use core::panic::PanicInfo;
 use framebuffer::color::{self};
 use graphics::LOGGER;
 use mem::{KHEAP_PAGE_COUNT, KHEAP_VIRTUAL};
-use memory::vmm::paging::PTM;
+use memory::vmm::{self, paging::PTM};
 
 extern crate alloc;
 
@@ -70,6 +70,11 @@ pub extern "sysv64" fn _start(bootinfo: &mut BootInfo) -> ! {
         "Heap start address: {:#x}, pages: {:#x}",
         KHEAP_VIRTUAL,
         KHEAP_PAGE_COUNT
+    );
+
+    validate!(result
+        unsafe { vmm::initialize() },
+        "Initializing virtual memory manager"
     );
 
     hal::hlt_loop();
