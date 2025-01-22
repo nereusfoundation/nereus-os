@@ -6,8 +6,8 @@ KERNEL_DIR = kernel
 TARGET_DIR_BOOTLOADER_DEBUG = target/x86_64-unknown-uefi/debug
 TARGET_DIR_BOOTLOADER_RELEASE = target/x86_64-unknown-uefi/release
 
-TARGET_DIR_KERNEL_DEBUG = target/x86_64-unknown-nebula/debug
-TARGET_DIR_KERNEL_RELEASE = target/x86_64-unknown-nebula/release
+TARGET_DIR_KERNEL_DEBUG = target/x86_64-unknown-nereus/debug
+TARGET_DIR_KERNEL_RELEASE = target/x86_64-unknown-nereus/release
 
 EFI_FILE = uefi-loader.efi
 KERNEL_FILE = kernel.elf

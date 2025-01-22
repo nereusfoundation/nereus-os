@@ -18,16 +18,16 @@ use crate::graphics;
 pub(crate) mod bootinfo;
 pub(crate) mod stack;
 
-// custom memory types of the NebulaLoader
+// custom memory types of the NereusLoader
 pub(crate) const PSF_DATA: MemoryType = MemoryType::custom(0x8000_0000);
 pub(crate) const KERNEL_CODE: MemoryType = MemoryType::custom(0x8000_0001);
 pub(crate) const KERNEL_STACK: MemoryType = MemoryType::custom(0x8000_0002);
 pub(crate) const KERNEL_DATA: MemoryType = MemoryType::custom(0x8000_0003);
 pub(crate) const MMAP_META_DATA: MemoryType = MemoryType::custom(0x8000_0004);
 
-pub(crate) type NebulaMemoryMap = map::MemoryMap;
-pub(crate) type NebulaMemoryDescriptor = map::MemoryDescriptor;
-pub(crate) type NebulaMemoryType = map::MemoryType;
+pub(crate) type NereusMemoryMap = map::MemoryMap;
+pub(crate) type NereusMemoryDescriptor = map::MemoryDescriptor;
+pub(crate) type NereusMemoryType = map::MemoryType;
 
 /// Wrapper for attributes of the virtual address space for the kernel
 #[derive(Debug)]
@@ -84,7 +84,7 @@ pub(crate) fn initialize_address_space(
     let first_stack_addr = memory_map
         .descriptors()
         .iter()
-        .filter(|desc| desc.r#type == NebulaMemoryType::KernelStack)
+        .filter(|desc| desc.r#type == NereusMemoryType::KernelStack)
         .map(|desc| desc.phys_start)
         .min()
         .ok_or(FrameAllocatorError::InvalidMemoryMap)?;
@@ -97,7 +97,7 @@ pub(crate) fn initialize_address_space(
         .try_for_each(|desc| -> Result<(), FrameAllocatorError> {
             let (virtual_base, physical_base, flags) = match desc.r#type {
                 // map part of physical address space to higher half
-                NebulaMemoryType::Available => {
+                NereusMemoryType::Available => {
                     if desc.phys_end < PAS_VIRTUAL_MAX {
                         (PAS_VIRTUAL, desc.phys_start, nx_flags)
                     } else {
@@ -105,24 +105,24 @@ pub(crate) fn initialize_address_space(
                     }
                 }
                 // do not map reserved memory
-                NebulaMemoryType::Reserved => return Ok(()),
-                NebulaMemoryType::KernelStack => (
+                NereusMemoryType::Reserved => return Ok(()),
+                NereusMemoryType::KernelStack => (
                     KERNEL_STACK_VIRTUAL,
                     desc.phys_start - first_stack_addr,
                     nx_flags,
                 ),
                 // map kernel data same as available PAS
-                NebulaMemoryType::KernelData | NebulaMemoryType::AcpiData => {
+                NereusMemoryType::KernelData | NereusMemoryType::AcpiData => {
                     (PAS_VIRTUAL, desc.phys_start, nx_flags)
                 }
-                NebulaMemoryType::KernelCode => (
+                NereusMemoryType::KernelCode => (
                     KERNEL_CODE_VIRTUAL,
                     desc.phys_start,
                     PageEntryFlags::default(),
                 ),
                 // loader data, code pages will later be reclaimed by the kernel - must be
                 // identity-mapped for now
-                NebulaMemoryType::Loader => (0, desc.phys_start, PageEntryFlags::default()),
+                NereusMemoryType::Loader => (0, desc.phys_start, PageEntryFlags::default()),
             };
 
             (0..desc.num_pages).try_for_each(|page| {
@@ -145,7 +145,7 @@ pub(crate) fn initialize_address_space(
     unsafe {
         graphics::logger::update_font(PAS_VIRTUAL);
         bootinfo_ref.mmap.descriptors =
-            (memory_map.descriptors as u64 + PAS_VIRTUAL) as *mut NebulaMemoryDescriptor;
+            (memory_map.descriptors as u64 + PAS_VIRTUAL) as *mut NereusMemoryDescriptor;
     }
 
     // switch to new paging scheme

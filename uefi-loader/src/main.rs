@@ -21,7 +21,7 @@ use hal::{instructions::cpuid::Cpuid, registers::msr::msr_guard::Msr};
 use log::{error, info};
 use mem::{bitmap_allocator::BitMapAllocator, KERNEL_STACK_SIZE, PAGE_SIZE};
 use memory::{
-    NebulaMemoryDescriptor, NebulaMemoryMap, NebulaMemoryType, KERNEL_CODE, KERNEL_DATA,
+    NereusMemoryDescriptor, NereusMemoryMap, NereusMemoryType, KERNEL_CODE, KERNEL_DATA,
     KERNEL_STACK, MMAP_META_DATA, PSF_DATA,
 };
 use uefi::{mem::memory_map::MemoryMap, prelude::*};
@@ -169,7 +169,7 @@ fn main() -> Status {
     hal::hlt_loop();
 }
 
-fn drop_boot_services(mut mmap_descriptors: Vec<NebulaMemoryDescriptor>) -> NebulaMemoryMap {
+fn drop_boot_services(mut mmap_descriptors: Vec<NereusMemoryDescriptor>) -> NereusMemoryMap {
     let mmap = unsafe { boot::exit_boot_services(KERNEL_DATA) };
 
     let mut first_addr = u64::MAX;
@@ -190,33 +190,33 @@ fn drop_boot_services(mut mmap_descriptors: Vec<NebulaMemoryDescriptor>) -> Nebu
         }
 
         let r#type = if desc.phys_start < 0x1000 {
-            NebulaMemoryType::Reserved
+            NereusMemoryType::Reserved
         } else {
             match desc.ty {
-                MemoryType::CONVENTIONAL | MMAP_META_DATA => NebulaMemoryType::Available,
-                KERNEL_CODE => NebulaMemoryType::KernelCode,
-                KERNEL_DATA | PSF_DATA => NebulaMemoryType::KernelData,
-                KERNEL_STACK => NebulaMemoryType::KernelStack,
+                MemoryType::CONVENTIONAL | MMAP_META_DATA => NereusMemoryType::Available,
+                KERNEL_CODE => NereusMemoryType::KernelCode,
+                KERNEL_DATA | PSF_DATA => NereusMemoryType::KernelData,
+                KERNEL_STACK => NereusMemoryType::KernelStack,
                 MemoryType::ACPI_RECLAIM | MemoryType::ACPI_NON_VOLATILE => {
-                    NebulaMemoryType::AcpiData
+                    NereusMemoryType::AcpiData
                 }
                 MemoryType::LOADER_CODE
                 | MemoryType::LOADER_DATA
                 | MemoryType::BOOT_SERVICES_CODE
-                | MemoryType::BOOT_SERVICES_DATA => NebulaMemoryType::Loader,
-                _ => NebulaMemoryType::Reserved,
+                | MemoryType::BOOT_SERVICES_DATA => NereusMemoryType::Loader,
+                _ => NereusMemoryType::Reserved,
             }
         };
 
-        if desc.phys_start < first_available_addr && r#type == NebulaMemoryType::Available {
+        if desc.phys_start < first_available_addr && r#type == NereusMemoryType::Available {
             first_available_addr = desc.phys_start;
         }
 
-        if phys_end > last_available_addr && r#type == NebulaMemoryType::Available {
+        if phys_end > last_available_addr && r#type == NereusMemoryType::Available {
             last_available_addr = phys_end;
         }
 
-        mmap_descriptors.push(NebulaMemoryDescriptor {
+        mmap_descriptors.push(NereusMemoryDescriptor {
             phys_start: desc.phys_start,
             phys_end,
             num_pages: desc.page_count,
@@ -225,7 +225,7 @@ fn drop_boot_services(mut mmap_descriptors: Vec<NebulaMemoryDescriptor>) -> Nebu
     });
 
     let (ptr, len, _cap) = mmap_descriptors.into_raw_parts();
-    NebulaMemoryMap {
+    NereusMemoryMap {
         descriptors: ptr,
         descriptors_len: len as u64,
         first_addr,

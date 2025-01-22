@@ -8,11 +8,11 @@ use uefi::{
     mem::memory_map::MemoryMap,
 };
 
-use super::{NebulaMemoryDescriptor, KERNEL_DATA, MMAP_META_DATA};
+use super::{NereusMemoryDescriptor, KERNEL_DATA, MMAP_META_DATA};
 
 // Allocate page-sized memory for kernel bootinfo and set up vector of memory map descriptors
 pub(crate) fn allocate_bootinfo(
-) -> Result<(NonNull<BootInfo>, Vec<NebulaMemoryDescriptor>), uefi::Error> {
+) -> Result<(NonNull<BootInfo>, Vec<NereusMemoryDescriptor>), uefi::Error> {
     let num_pages = size_of::<BootInfo>().div_ceil(PAGE_SIZE);
     let ptr = boot::allocate_pages(
         AllocateType::MaxAddress(PAS_VIRTUAL_MAX),
@@ -21,15 +21,15 @@ pub(crate) fn allocate_bootinfo(
     )
     .map(|bootinfo| bootinfo.cast::<BootInfo>())?;
 
-    // get uefi memory map meta data to allocate a sufficient number of bytes for the nebula memory map in advance
+    // get uefi memory map meta data to allocate a sufficient number of bytes for the nereus memory map in advance
     let len = boot::memory_map(MMAP_META_DATA)?.meta().map_size;
     let descriptors = allocate_memory_map(len)?;
     Ok((ptr, descriptors))
 }
 
-fn allocate_memory_map(cap: usize) -> Result<Vec<NebulaMemoryDescriptor>, uefi::Error> {
+fn allocate_memory_map(cap: usize) -> Result<Vec<NereusMemoryDescriptor>, uefi::Error> {
     assert_eq!(
-        align_of::<Vec<NebulaMemoryDescriptor>>(),
+        align_of::<Vec<NereusMemoryDescriptor>>(),
         0x8,
         "invalid memory descriptor alignment"
     );
@@ -41,7 +41,7 @@ fn allocate_memory_map(cap: usize) -> Result<Vec<NebulaMemoryDescriptor>, uefi::
         KERNEL_DATA,
         num_pages,
     )?
-    .cast::<NebulaMemoryDescriptor>()
+    .cast::<NereusMemoryDescriptor>()
     .as_ptr();
 
     Ok(unsafe { Vec::from_raw_parts(ptr, 0, cap) })

@@ -1,4 +1,4 @@
-# nebula os
+# nerues os
 
 A x86-64 hobby operating system written entirely from scratch in Rust.
 
@@ -14,8 +14,8 @@ A x86-64 hobby operating system written entirely from scratch in Rust.
 Clone the repository to your local machine:
 
 ```bash
-git clone https://github.com/nebulafoundation/nebula-os.git
-cd nebula-os
+git clone https://github.com/nereusfoundation/nereus-os.git
+cd nereus-os
 ```
 
 ### Running

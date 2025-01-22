@@ -12,7 +12,7 @@
   "llvm-target": "x86_64-unknown-none-elf",
   "max-atomic-width": 64,
   "metadata": {
-    "description": "Nebula Kernel x86-64",
+    "description": "Nereus Kernel x86-64",
     "host_tools": false,
     "std": false,
     "tier": 2
