@@ -36,9 +36,21 @@ impl RawFrameBuffer {
 
     /// Fill the entire display with a certain color
     pub fn fill(&self, color: Color) {
-        for x in 0..self.width {
-            for y in 0..self.height {
-                self.draw_pixel(x, y, color).unwrap();
+        let pitch = self.stride * BYTES_PER_PIXEL;
+
+        let pixel = match self.format {
+            PixelFormat::Rgb => u32::from_ne_bytes([color.red(), color.green(), color.blue(), 255]),
+            PixelFormat::Bgr => u32::from_ne_bytes([color.blue(), color.green(), color.red(), 255]),
+        };
+
+        for y in 0..self.height {
+            for x in 0..self.width {
+                unsafe {
+                    let ptr: *mut u32 = (self.ptr.cast::<u8>())
+                        .add(pitch * y + BYTES_PER_PIXEL * x)
+                        .cast();
+                    ptr.write_volatile(pixel);
+                }
             }
         }
     }
