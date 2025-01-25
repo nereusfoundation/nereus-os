@@ -54,7 +54,7 @@ pub(super) struct GlobalDescriptorTable {
 impl GlobalDescriptorTable {
     /// Initialize a new GDT
     fn new() -> Self {
-        let (tss_low, tss_high) = SegmentDescriptor::tss(&TSS);
+        let (tss_low, tss_high) = unsafe { SegmentDescriptor::tss(&raw const TSS) };
 
         GlobalDescriptorTable {
             null: SegmentDescriptor::null(),

@@ -132,22 +132,20 @@ impl SegmentDescriptor {
         SegmentDescriptor::new(0, 0, AccessByte::empty(), SegmentDescriptorFlags::empty())
     }
 
-    /// Return the low and high segment descriptors pointing to the specified tss.
-    pub(super) fn tss(tss: &'static TaskStateSegment) -> (Self, Self) {
-        let tss_address = tss as *const TaskStateSegment as u64;
+    /// Returns the low and high segment descriptors pointing to the specified tss.
+    /// The format of a Segment Descriptor differs to ensure that the Base value can contain a 64-bit Linear Address. It takes up the space in the table of two usual entries, in a little endian format, such that the lower half of this entry precedes the higher half in the table.
+    ///
+    /// # Safety
+    /// The caller must ensure that the references TSS is valid.
+    pub(super) unsafe fn tss(tss: *const TaskStateSegment) -> (Self, Self) {
+        let tss_address = tss as u64;
         let low = SegmentDescriptor::new(
             tss_address as u32,
             (size_of::<TaskStateSegment>() - 1) as u32,
             AccessByte::from_bits_truncate(AccessByte::PRESENT.bits() | TSS_AVAILABLE_FLAGS),
             SegmentDescriptorFlags::empty(),
         );
-
-        let high = SegmentDescriptor::new(
-            (tss_address >> 32) as u32,
-            0,
-            AccessByte::empty(),
-            SegmentDescriptorFlags::empty(),
-        );
+        let high = unsafe { core::mem::transmute::<u64, SegmentDescriptor>(tss_address >> 32) };
 
         (low, high)
     }

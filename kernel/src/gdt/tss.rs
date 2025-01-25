@@ -13,7 +13,7 @@ static IST_STACK: [u8; KERNEL_INTERRUPT_STACK_SIZE] = [0; KERNEL_INTERRUPT_STACK
 /// Stack used for mode switches.
 static RSP_STACK: [u8; KERNEL_INTERRUPT_STACK_SIZE] = [0; KERNEL_INTERRUPT_STACK_SIZE];
 
-pub(super) static TSS: TaskStateSegment = TaskStateSegment::new();
+pub(super) static mut TSS: TaskStateSegment = TaskStateSegment::new();
 
 #[repr(C, packed(4))]
 #[derive(Debug, Copy, Clone)]
