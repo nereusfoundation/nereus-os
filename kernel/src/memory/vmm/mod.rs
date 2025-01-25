@@ -151,7 +151,13 @@ impl VirtualMemoryManager {
                     .pmm()
                     .request_page()
                     .map_err(|err| VmmError::Paging(err.into()))?,
-                AllocationType::Address(address) => address + (page * PAGE_SIZE) as u64,
+                AllocationType::Address(address) => {
+                    if flags.contains(VmFlags::MMIO) {
+                        address + (page * PAGE_SIZE) as u64
+                    } else {
+                        unimplemented!("allocating a specific address frame is not yet supported.")
+                    }
+                }
             };
 
             let virtual_address = vmm_start + base + (page * PAGE_SIZE) as u64;
