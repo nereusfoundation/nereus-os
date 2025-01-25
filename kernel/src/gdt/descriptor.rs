@@ -1,5 +1,7 @@
 use bitflags::bitflags;
 
+use super::tss::{TaskStateSegment, TSS_AVAILABLE_FLAGS};
+
 /// A reference to a descriptor, which can be loaded into a segment register
 /// - Limit: A 20-bit value, tells the maximum addressable unit, either in 1 byte units, or in 4KiB pages. Hence, if you choose page granularity and set the Limit value to 0xFFFFF the segment will span the full 4 GiB address space in 32-bit mode.
 /// - Base: A 32-bit value containing the linear address where the segment begins.
@@ -128,5 +130,25 @@ impl SegmentDescriptor {
 
     pub(super) const fn null() -> Self {
         SegmentDescriptor::new(0, 0, AccessByte::empty(), SegmentDescriptorFlags::empty())
+    }
+
+    /// Return the low and high segment descriptors pointing to the specified tss.
+    pub(super) fn tss(tss: &'static TaskStateSegment) -> (Self, Self) {
+        let tss_address = tss as *const TaskStateSegment as u64;
+        let low = SegmentDescriptor::new(
+            tss_address as u32,
+            (size_of::<TaskStateSegment>() - 1) as u32,
+            AccessByte::from_bits_truncate(AccessByte::PRESENT.bits() | TSS_AVAILABLE_FLAGS),
+            SegmentDescriptorFlags::empty(),
+        );
+
+        let high = SegmentDescriptor::new(
+            (tss_address >> 32) as u32,
+            0,
+            AccessByte::empty(),
+            SegmentDescriptorFlags::empty(),
+        );
+
+        (low, high)
     }
 }

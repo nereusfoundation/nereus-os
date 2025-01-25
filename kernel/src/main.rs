@@ -47,7 +47,6 @@ pub extern "sysv64" fn _start(bootinfo: &mut BootInfo) -> ! {
         "Reclaiming loader memory"
     );
 
-    // todo: tss
     validate!(
         unsafe {
             gdt::load();

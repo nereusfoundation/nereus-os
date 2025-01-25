@@ -3,14 +3,18 @@ use core::{arch::asm, cell::LazyCell};
 use descriptor::SegmentDescriptor;
 use mem::VirtualAddress;
 use sync::spin::SpinLock;
+use tss::TSS;
 
 mod descriptor;
+mod tss;
 
 pub(crate) const KERNEL_CS: u16 = 0x08;
 pub(crate) const KERNEL_DS: u16 = 0x10;
+const KERNEL_TSS: u16 = 0x28;
 
 static GDTR: SpinLock<LazyCell<GdtDescriptor>> = SpinLock::new(LazyCell::new(GdtDescriptor::new));
-static GDT: GlobalDescriptorTable = GlobalDescriptorTable::new();
+static GDT: SpinLock<LazyCell<GlobalDescriptorTable>> =
+    SpinLock::new(LazyCell::new(GlobalDescriptorTable::new));
 
 /// GDT Descriptor with size of table and pointer to the table (paging applies).
 #[repr(C, packed)]
@@ -24,9 +28,10 @@ struct GdtDescriptor {
 
 impl GdtDescriptor {
     fn new() -> GdtDescriptor {
+        let gdt = GDT.lock();
         GdtDescriptor {
             size: (size_of::<GlobalDescriptorTable>() - 1) as u16,
-            offset: &GDT as *const GlobalDescriptorTable as u64,
+            offset: LazyCell::force(&*gdt) as *const GlobalDescriptorTable as u64,
         }
     }
 }
@@ -42,18 +47,23 @@ pub(super) struct GlobalDescriptorTable {
     kernel_data: SegmentDescriptor,
     user_code: SegmentDescriptor,
     user_data: SegmentDescriptor,
-    // todo: add TSS for user mode and double-faults
+    tss_low: SegmentDescriptor,
+    tss_high: SegmentDescriptor,
 }
 
 impl GlobalDescriptorTable {
     /// Initialize a new GDT
-    const fn new() -> Self {
+    fn new() -> Self {
+        let (tss_low, tss_high) = SegmentDescriptor::tss(&TSS);
+
         GlobalDescriptorTable {
             null: SegmentDescriptor::null(),
             kernel_code: SegmentDescriptor::kernel_code(),
             kernel_data: SegmentDescriptor::kernel_data(),
             user_code: SegmentDescriptor::user_code(),
             user_data: SegmentDescriptor::user_data(),
+            tss_low,
+            tss_high,
         }
     }
 }
@@ -92,5 +102,10 @@ pub(super) unsafe fn load() {
 
             options(preserves_flags)
         );
+    }
+
+    // load task switch segment
+    unsafe {
+        asm!("mov ax, {tss}", "ltr ax", tss = const KERNEL_TSS as u64, options(nostack, preserves_flags))
     }
 }
