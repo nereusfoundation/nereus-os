@@ -1,4 +1,4 @@
-# nerues os
+# nereus os
 
 A x86-64 hobby operating system written entirely from scratch in Rust.
 
