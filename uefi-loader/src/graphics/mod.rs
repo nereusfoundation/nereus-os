@@ -32,9 +32,9 @@ pub(crate) fn initialize_framebuffer() -> Result<RawFrameBuffer, FrameBufferErro
 
     let gop_mode = gop.current_mode_info();
     let gop_fb_size = gop.frame_buffer().size();
-    let format = match gop_mode.pixel_format() {
-        uefi::proto::console::gop::PixelFormat::Rgb => framebuffer::PixelFormat::Rgb,
-        uefi::proto::console::gop::PixelFormat::Bgr => framebuffer::PixelFormat::Bgr,
+    let (format, bpp) = match gop_mode.pixel_format() {
+        uefi::proto::console::gop::PixelFormat::Rgb => (framebuffer::PixelFormat::Rgb32bit, 4),
+        uefi::proto::console::gop::PixelFormat::Bgr => (framebuffer::PixelFormat::Bgr32bit, 4),
         uefi::proto::console::gop::PixelFormat::Bitmask => unimplemented!(),
         uefi::proto::console::gop::PixelFormat::BltOnly => unimplemented!(),
     };
@@ -47,6 +47,7 @@ pub(crate) fn initialize_framebuffer() -> Result<RawFrameBuffer, FrameBufferErro
             gop_mode.resolution().1,
             gop_mode.stride(),
             format,
+            bpp,
         )
     })
 }

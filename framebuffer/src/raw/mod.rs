@@ -18,6 +18,8 @@ pub struct RawFrameBuffer {
     stride: usize,
     /// Pixel format of framebuffer
     format: PixelFormat,
+    /// Number of bytes per pixel. Commonly 4.
+    bpp: usize,
 }
 
 impl RawFrameBuffer {
@@ -32,6 +34,7 @@ impl RawFrameBuffer {
         height: usize,
         stride: usize,
         format: PixelFormat,
+        bpp: usize,
     ) -> RawFrameBuffer {
         let ptr = slice_from_raw_parts_mut(ptr, size);
 
@@ -41,6 +44,7 @@ impl RawFrameBuffer {
             height,
             stride,
             format,
+            bpp,
         }
     }
 }

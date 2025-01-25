@@ -2,9 +2,7 @@ use core::ptr::write_volatile;
 
 use fonts::psf::RawFont;
 
-use crate::{
-    color::Color, error::FrameBufferError, raw::RawFrameBuffer, PixelFormat, BYTES_PER_PIXEL,
-};
+use crate::{color::Color, error::FrameBufferError, raw::RawFrameBuffer, PixelFormat};
 
 impl RawFrameBuffer {
     pub fn draw_pixel(&self, x: usize, y: usize, color: Color) -> Result<(), FrameBufferError> {
@@ -12,18 +10,18 @@ impl RawFrameBuffer {
             return Err(FrameBufferError::CoordinatesOutOfBounds(x, y));
         }
 
-        let pitch = self.stride * BYTES_PER_PIXEL;
+        let pitch = self.stride * self.bpp;
 
         unsafe {
-            let pixel = (self.ptr as *mut u8).add(pitch * y + BYTES_PER_PIXEL * x);
+            let pixel = (self.ptr as *mut u8).add(pitch * y + self.bpp * x);
 
             match self.format {
-                PixelFormat::Rgb => {
+                PixelFormat::Rgb32bit => {
                     write_volatile(pixel, color.red()); // Red
                     write_volatile(pixel.add(1), color.green()); // Green
                     write_volatile(pixel.add(2), color.blue()); // Blue
                 }
-                PixelFormat::Bgr => {
+                PixelFormat::Bgr32bit => {
                     write_volatile(pixel, color.blue()); // Blue
                     write_volatile(pixel.add(1), color.green()); // Green
                     write_volatile(pixel.add(2), color.red()); // Red
@@ -36,19 +34,22 @@ impl RawFrameBuffer {
 
     /// Fill the entire display with a certain color
     pub fn fill(&self, color: Color) {
-        let pitch = self.stride * BYTES_PER_PIXEL;
+        let pitch = self.stride * self.bpp;
 
         let pixel = match self.format {
-            PixelFormat::Rgb => u32::from_ne_bytes([color.red(), color.green(), color.blue(), 255]),
-            PixelFormat::Bgr => u32::from_ne_bytes([color.blue(), color.green(), color.red(), 255]),
+            PixelFormat::Rgb32bit => {
+                u32::from_ne_bytes([color.red(), color.green(), color.blue(), 255])
+            }
+            PixelFormat::Bgr32bit => {
+                u32::from_ne_bytes([color.blue(), color.green(), color.red(), 255])
+            }
         };
 
         for y in 0..self.height {
             for x in 0..self.width {
                 unsafe {
-                    let ptr: *mut u32 = (self.ptr.cast::<u8>())
-                        .add(pitch * y + BYTES_PER_PIXEL * x)
-                        .cast();
+                    let ptr: *mut u32 =
+                        (self.ptr.cast::<u8>()).add(pitch * y + self.bpp * x).cast();
                     ptr.write_volatile(pixel);
                 }
             }
