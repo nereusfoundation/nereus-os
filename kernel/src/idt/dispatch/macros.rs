@@ -42,7 +42,7 @@ macro_rules! declare_isr {
 /// Fills IDT with the provided iSRs. Must only be called once.
 #[macro_export]
 macro_rules! assign_isr {
-    ($($isr_number:expr, $gate_type:expr $(, $error:ident)?)*) => {
+    ($($isr_number:expr, $gate_type:expr, $ist:expr $(, $error:ident)?)*) => {
         paste::paste! {
 
             $(
@@ -55,7 +55,7 @@ macro_rules! assign_isr {
                         self.set_handler(
                             $isr_number,
                             [<isr_stub_ $isr_number>] as usize as u64,
-                            0,
+                            $ist,
                             0,
                             $gate_type,
                         );

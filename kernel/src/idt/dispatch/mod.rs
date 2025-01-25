@@ -42,7 +42,7 @@ fn dispatch(state: &CpuState) -> &CpuState {
         unknown => {
             println!(
                 color::ERROR,
-                " [ERROR]: unknwon EXCEPTION: {:#x}, error code (if applicable): {:?}",
+                " [ERROR]: unknown EXCEPTION: {:#x}, error code (if applicable): {:?}",
                 unknown,
                 ErrorCode::from_bits_truncate(error_code as u32)
             );
