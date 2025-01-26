@@ -8,4 +8,5 @@ pub struct BootInfo {
     pub mmap: MemoryMap,
     pub writer: Option<RawWriter>,
     pub ptm: Option<PageTableManager>,
+    pub rsdp: *const u8,
 }

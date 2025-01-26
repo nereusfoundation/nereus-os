@@ -43,3 +43,9 @@ pub(crate) enum ElfParseError {
     #[error("Invalid ELF-format, 64-bit is required")]
     InvalidFormat,
 }
+
+#[derive(Debug, thiserror_no_std::Error)]
+pub(crate) enum RsdpError {
+    #[error("RSDP table address cannot be found")]
+    NotFound,
+}

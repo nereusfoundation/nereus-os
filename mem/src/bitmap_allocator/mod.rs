@@ -21,6 +21,8 @@ pub struct BitMapAllocator {
     /// Whether to use Loader and BootService memory types as available or ignore them. Defaults to
     /// true.
     ignore_loader: bool,
+    /// Whether to use ACPI Table as available memory or ignore them. Defautlts to true.
+    ignore_acpi: bool,
 }
 
 impl BitMapAllocator {
@@ -62,6 +64,7 @@ impl BitMapAllocator {
             current_descriptor_index: 0,
             current_address: 0,
             ignore_loader: true,
+            ignore_acpi: true,
         };
 
         // reserve frames of bitmap
@@ -87,6 +90,7 @@ impl BitMapAllocator {
 
             if desc.r#type == MemoryType::Available
                 || !self.ignore_loader && desc.r#type == MemoryType::Loader
+                || !self.ignore_acpi && desc.r#type == MemoryType::AcpiData
             {
                 for addr in
                     (self.current_address.max(desc.phys_start)..desc.phys_end).step_by(PAGE_SIZE)
@@ -276,6 +280,21 @@ impl BitMapAllocator {
         mmap.descriptors()
             .iter()
             .filter(|desc| desc.r#type == MemoryType::Loader)
+            .try_for_each(|desc| {
+                self.free_reserved_frames(desc.phys_start, desc.num_pages as usize)
+            })
+    }
+
+    /// Make the ACPI Tables memory types available.
+    ///
+    /// # Safety
+    /// Caller must ensure that this function can be called.
+    pub unsafe fn use_acpi_memory(&mut self) -> Result<(), FrameAllocatorError> {
+        self.ignore_acpi = false;
+        let mmap = self.memory_map;
+        mmap.descriptors()
+            .iter()
+            .filter(|desc| desc.r#type == MemoryType::AcpiData)
             .try_for_each(|desc| {
                 self.free_reserved_frames(desc.phys_start, desc.num_pages as usize)
             })

@@ -8,6 +8,7 @@ use core::{arch::asm, panic::PanicInfo};
 
 use alloc::vec::Vec;
 use boot::MemoryType;
+use error::RsdpError;
 use framebuffer::{
     color::{self, Color, BACKGROUND, ERROR, LOG, OK},
     raw::write::RawWriter,
@@ -19,12 +20,16 @@ use graphics::{
 };
 use hal::{instructions::cpuid::Cpuid, registers::msr::msr_guard::Msr};
 use log::{error, info};
-use mem::{bitmap_allocator::BitMapAllocator, KERNEL_STACK_SIZE, PAGE_SIZE};
+use mem::{bitmap_allocator::BitMapAllocator, PhysicalAddress, KERNEL_STACK_SIZE, PAGE_SIZE};
 use memory::{
     NereusMemoryDescriptor, NereusMemoryMap, NereusMemoryType, KERNEL_CODE, KERNEL_DATA,
     KERNEL_STACK, MMAP_META_DATA, PSF_DATA,
 };
-use uefi::{mem::memory_map::MemoryMap, prelude::*};
+use uefi::{
+    mem::memory_map::MemoryMap,
+    prelude::*,
+    table::cfg::{ACPI2_GUID, ACPI_GUID},
+};
 
 mod error;
 mod file;
@@ -93,7 +98,7 @@ fn main() -> Status {
                 kernel_stack.num_pages()
             );
 
-            let (bootinfo_ptr, mmap_descriptors) = validate!(
+            let (mut bootinfo_ptr, mmap_descriptors) = validate!(
                 memory::bootinfo::allocate_bootinfo(),
                 "Allocating memory for kernel bootinfo"
             );
@@ -103,17 +108,18 @@ fn main() -> Status {
                 bootinfo_ptr.as_ptr() as u64
             );
 
+            let rsdp = validate!(get_rsdp(), "Retrieving root system descriptor pointer");
+            loginfo!("RSDP Table address: {:#x}", rsdp);
+
             log!(LOG, " [LOG  ]: Exiting boot services ");
             let memory_map = drop_boot_services(mmap_descriptors);
             logln!(OK, "OK");
 
-            // set memory map of boot info to the correct one
+            // set memory map of boot info to the correct one & assign rsdp
             unsafe {
-                bootinfo_ptr
-                    .as_ptr()
-                    .as_mut()
-                    .expect("bootinfo ptr must be valid")
-                    .mmap = memory_map;
+                let bootinfo_ref = bootinfo_ptr.as_mut();
+                bootinfo_ref.mmap = memory_map;
+                bootinfo_ref.rsdp = rsdp as *const u8;
             }
 
             let mut pmm = validate!(
@@ -197,9 +203,7 @@ fn drop_boot_services(mut mmap_descriptors: Vec<NereusMemoryDescriptor>) -> Nere
                 KERNEL_CODE => NereusMemoryType::KernelCode,
                 KERNEL_DATA | PSF_DATA => NereusMemoryType::KernelData,
                 KERNEL_STACK => NereusMemoryType::KernelStack,
-                MemoryType::ACPI_RECLAIM | MemoryType::ACPI_NON_VOLATILE => {
-                    NereusMemoryType::AcpiData
-                }
+                MemoryType::ACPI_RECLAIM => NereusMemoryType::AcpiData,
                 MemoryType::LOADER_CODE
                 | MemoryType::LOADER_DATA
                 | MemoryType::BOOT_SERVICES_CODE
@@ -233,6 +237,19 @@ fn drop_boot_services(mut mmap_descriptors: Vec<NereusMemoryDescriptor>) -> Nere
         last_addr,
         last_available_addr,
     }
+}
+
+/// Gets the root system descriptor pointer address.
+/// First attempts to get address of RSDP ACPI 2.0+ and otherwise yields the ACPI 1.0 version.
+fn get_rsdp() -> Result<PhysicalAddress, RsdpError> {
+    system::with_config_table(|entries| {
+        entries
+            .iter()
+            .find(|entry| matches!(entry.guid, ACPI2_GUID))
+            .or_else(|| entries.iter().find(|entry| matches!(entry.guid, ACPI_GUID)))
+            .map(|entry| entry.address as u64)
+            .ok_or(RsdpError::NotFound)
+    })
 }
 
 #[panic_handler]

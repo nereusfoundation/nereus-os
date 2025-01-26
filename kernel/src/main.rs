@@ -14,6 +14,7 @@ use memory::vmm::{self, paging::PTM};
 
 extern crate alloc;
 
+mod acpi;
 mod gdt;
 mod graphics;
 mod idt;
@@ -30,7 +31,7 @@ pub extern "sysv64" fn _start(bootinfo: &mut BootInfo) -> ! {
             .take()
             .expect("logger must have been initialized in loader"),
     );
-    println!(color::CAPTION, " [KERNEL]");
+    println!(color::CAPTION, "\n [KERNEL]");
 
     validate!(
         PTM.initialize(
@@ -42,8 +43,8 @@ pub extern "sysv64" fn _start(bootinfo: &mut BootInfo) -> ! {
         "Reinitializing page table manager"
     );
 
-    validate!(
-        memory::vmm::paging::reclaim_loader_memory(bootinfo).unwrap(),
+    validate!(result
+        memory::vmm::paging::reclaim_loader_memory(bootinfo),
         "Reclaiming loader memory"
     );
 
@@ -79,6 +80,12 @@ pub extern "sysv64" fn _start(bootinfo: &mut BootInfo) -> ! {
     validate!(result
          memory::vmm::paging::remap_framebuffer(), 
          "Remapping framebuffer as MMIO");
+
+    validate!(result
+        acpi::parse(bootinfo.rsdp), "Parsing ACPI tables");
+
+    validate!(result memory::vmm::paging::reclaim_acpi_memory(bootinfo.mmap), "Reclaiming ACPI memory");
+
     hal::hlt_loop();
 }
 

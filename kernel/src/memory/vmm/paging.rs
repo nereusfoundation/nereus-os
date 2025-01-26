@@ -1,4 +1,5 @@
 use bootinfo::BootInfo;
+use mem::map::MemoryMap;
 use mem::paging::ptm::PageTableManager;
 use mem::VirtualAddress;
 use mem::{map::MemoryType, PAGE_SIZE, PAS_VIRTUAL, PAS_VIRTUAL_MAX};
@@ -25,19 +26,22 @@ pub(crate) fn reclaim_loader_memory(bootinfo: &mut BootInfo) -> Result<(), Pagin
     // remap loader
     mmap.descriptors()
         .iter()
-        .filter(|desc| desc.phys_end < PAS_VIRTUAL_MAX && desc.r#type == MemoryType::Loader)
+        .filter(|desc| desc.r#type == MemoryType::Loader)
         .try_for_each(|desc| {
             (0..desc.num_pages).try_for_each(|page| {
                 // unmap from identity mapping
                 ptm.mappings()
                     .unmap_memory(desc.phys_start + PAGE_SIZE as u64 * page);
 
-                // remap to PAS offset
-                ptm.map_memory(
-                    desc.phys_start + PAS_VIRTUAL + PAGE_SIZE as u64 * page,
-                    desc.phys_start + PAGE_SIZE as u64 * page,
-                    flags,
-                )
+                if desc.phys_end < PAS_VIRTUAL_MAX {
+                    // remap to PAS offset
+                    ptm.map_memory(
+                        desc.phys_start + PAS_VIRTUAL + PAGE_SIZE as u64 * page,
+                        desc.phys_start + PAGE_SIZE as u64 * page,
+                        flags,
+                    )?;
+                }
+                Ok::<(), PagingError>(())
             })
         })?;
 
@@ -79,4 +83,44 @@ pub(crate) fn remap_framebuffer() -> Result<(), VmmError> {
     }
 
     Ok(())
+}
+
+/// Reclaims the memory previously used by the ACPI
+///
+/// This uses the virtual memory manager and must be called after it's initialization. This
+/// function must only be called after the ACPI tables have been parsed.
+pub(crate) fn reclaim_acpi_memory(mmap: MemoryMap) -> Result<(), VmmError> {
+    let mut locked = VMM.locked();
+    let vmm = locked.get_mut().ok_or(VmmError::VmmUnitialized)?;
+    let ptm = vmm.ptm();
+    let flags = ptm.nx_flags();
+
+    // remap acpi data
+    mmap.descriptors()
+        .iter()
+        .filter(|desc| desc.r#type == MemoryType::AcpiData)
+        .try_for_each(|desc| {
+            (0..desc.num_pages).try_for_each(|page| {
+                // unmap from identity mapping
+                ptm.mappings()
+                    .unmap_memory(desc.phys_start + PAGE_SIZE as u64 * page);
+
+                if desc.phys_end < PAS_VIRTUAL_MAX {
+                    // remap to PAS offset
+                    ptm.map_memory(
+                        desc.phys_start + PAS_VIRTUAL + PAGE_SIZE as u64 * page,
+                        desc.phys_start + PAGE_SIZE as u64 * page,
+                        flags,
+                    )?;
+                }
+                Ok::<(), PagingError>(())
+            })
+        })?;
+
+    // unsreserve acpi data memory
+    unsafe {
+        ptm.pmm()
+            .use_acpi_memory()
+            .map_err(|err| VmmError::Paging(err.into()))
+    }
 }

@@ -112,9 +112,7 @@ pub(crate) fn initialize_address_space(
                     nx_flags,
                 ),
                 // map kernel data same as available PAS
-                NereusMemoryType::KernelData | NereusMemoryType::AcpiData => {
-                    (PAS_VIRTUAL, desc.phys_start, nx_flags)
-                }
+                NereusMemoryType::KernelData => (PAS_VIRTUAL, desc.phys_start, nx_flags),
                 NereusMemoryType::KernelCode => (
                     KERNEL_CODE_VIRTUAL,
                     desc.phys_start,
@@ -123,6 +121,9 @@ pub(crate) fn initialize_address_space(
                 // loader data, code pages will later be reclaimed by the kernel - must be
                 // identity-mapped for now
                 NereusMemoryType::Loader => (0, desc.phys_start, PageEntryFlags::default()),
+                // acpi table will later be reclaimed by the kernel - must be identity-mapped for
+                // now
+                NereusMemoryType::AcpiData => (0, desc.phys_start, PageEntryFlags::default()),
             };
 
             (0..desc.num_pages).try_for_each(|page| {
