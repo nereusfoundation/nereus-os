@@ -14,10 +14,7 @@ KERNEL_FILE = kernel.elf
 FONT_FILE = light16.psf # light16.psf / ext-light32.psf
 
 FONT_DIR = psf
-BUILD_DIR = build
 REL_TARGET_DIR = ../target
-ESP_DIR = $(BUILD_DIR)/esp
-BOOT_DIR = $(ESP_DIR)/efi/boot
 
 QEMU_LOG = qemu.log
 STDOUT = file:stdio.log
@@ -71,7 +68,6 @@ clean:
 .PHONY: img
 img: all
 		@echo "Creating raw disk image..."
-		@mkdir -p $(BOOT_DIR)
 		@dd if=/dev/zero of=nereus-os.img bs=1M count=64
 		@mkfs.vfat nereus-os.img
 		@mkdir -p mnt
@@ -89,14 +85,6 @@ img: all
 
 .PHONY: run
 run: img 
-		@echo "Creating build directory..."
-		@mkdir -p $(BOOT_DIR)
-		@echo "Copying UEFI file to boot directory..."
-		@cp $(TARGET_DIR_BOOTLOADER)/$(EFI_FILE) $(BOOT_DIR)/bootx64.efi
-		@echo "Copying kernel file to boot directory..."
-		@cp $(TARGET_DIR_KERNEL)/$(KERNEL_FILE) $(ESP_DIR)/kernel.elf
-		@echo "Copying font file to boot directory..."
-		@cp $(FONT_DIR)/$(FONT_FILE) $(ESP_DIR)/font.psf
 		@echo "Running QEMU..."
 		@qemu-system-x86_64 \
 			-drive if=pflash,format=raw,readonly=on,file=$(OVMF_CODE) \

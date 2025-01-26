@@ -1,6 +1,5 @@
 **/target
 **/.idea
-/build
 nereus-os.img
 qemu.log
 stdio.log
