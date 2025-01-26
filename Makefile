@@ -64,10 +64,31 @@ clean:
 		@rm -rf target
 		@echo "Cleaning build directory..."
 		@rm -rf $(BUILD_DIR)
+		@echo "Cleaning disk image..."
+		@rm nereus-os.img
 		@echo "Clean complete."
 
+.PHONY: img
+img: all
+		@echo "Creating raw disk image..."
+		@mkdir -p $(BOOT_DIR)
+		@dd if=/dev/zero of=nereus-os.img bs=1M count=64
+		@mkfs.vfat nereus-os.img
+		@mkdir -p mnt
+		@sudo mount nereus-os.img mnt
+		@sudo mkdir -p mnt/efi/boot
+		@echo "Copying UEFI file to boot directory..."
+		@sudo cp $(TARGET_DIR_BOOTLOADER)/$(EFI_FILE) mnt/efi/boot/bootx64.efi
+		@echo "Copying kernel file to image..."
+		@sudo cp $(TARGET_DIR_KERNEL)/$(KERNEL_FILE) mnt/kernel.elf
+		@echo "Copying font file to image..."
+		@sudo cp $(FONT_DIR)/$(FONT_FILE) mnt/font.psf
+		@sudo umount mnt
+		@rmdir mnt
+		@echo "Disk image nereus-os.img created successfully."
+
 .PHONY: run
-run: all
+run: img 
 		@echo "Creating build directory..."
 		@mkdir -p $(BOOT_DIR)
 		@echo "Copying UEFI file to boot directory..."
@@ -80,7 +101,7 @@ run: all
 		@qemu-system-x86_64 \
 			-drive if=pflash,format=raw,readonly=on,file=$(OVMF_CODE) \
 			-drive if=pflash,format=raw,readonly=on,file=$(OVMF_VARS) \
-			-drive format=raw,file=fat:rw:$(ESP_DIR) \
+			-drive format=raw,file=nereus-os.img \
 			-d int -D $(QEMU_LOG) -no-reboot -serial $(STDOUT) -m 512M
 
 .PHONY: usb
