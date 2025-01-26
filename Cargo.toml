@@ -1,5 +1,4 @@
 [workspace]
-
 members = [
 	"uefi-loader",
 	"kernel",
@@ -12,3 +11,10 @@ members = [
 ]
 
 resolver = "2"
+
+[package]
+name = "nereus-os"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
