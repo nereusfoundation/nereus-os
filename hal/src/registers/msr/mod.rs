@@ -1,3 +1,4 @@
+pub mod apic;
 pub mod efer;
 pub mod msr_guard;
 
