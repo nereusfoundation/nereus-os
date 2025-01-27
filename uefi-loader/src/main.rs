@@ -203,7 +203,9 @@ fn drop_boot_services(mut mmap_descriptors: Vec<NereusMemoryDescriptor>) -> Nere
                 KERNEL_CODE => NereusMemoryType::KernelCode,
                 KERNEL_DATA | PSF_DATA => NereusMemoryType::KernelData,
                 KERNEL_STACK => NereusMemoryType::KernelStack,
-                MemoryType::ACPI_RECLAIM => NereusMemoryType::AcpiData,
+                MemoryType::ACPI_RECLAIM | MemoryType::ACPI_NON_VOLATILE => {
+                    NereusMemoryType::AcpiData
+                }
                 MemoryType::LOADER_CODE
                 | MemoryType::LOADER_DATA
                 | MemoryType::BOOT_SERVICES_CODE
