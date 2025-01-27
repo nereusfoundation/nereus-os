@@ -12,7 +12,7 @@ pub(crate) mod signature;
 pub(crate) fn parse(rsdp: *const u8) -> Result<(), AcpiError> {
     let rsd = Rsd::parse(rsdp)?;
     let sdt = Rsdt::new(rsd)?;
-    let _madt = sdt.parse(Signature::new_lossy(['A', 'P', 'I', 'C']))?;
+    let _madt = sdt.parse(Signature(*b"APIC"))?;
     // todo: parse remaining tables and retrieve system information
     Ok(())
 }

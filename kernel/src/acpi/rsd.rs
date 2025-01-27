@@ -2,7 +2,7 @@ use core::ptr;
 
 use super::{error::AcpiError, signature::Signature};
 
-const RSDP_SIGNATURE: Signature<8> = Signature::new_lossy(['R', 'S', 'D', ' ', 'P', 'T', 'R', ' ']);
+const RSDP_SIGNATURE: Signature<8> = Signature(*b"RSD PTR ");
 
 /// Root System Description Pointer version 1
 #[repr(C, packed)]

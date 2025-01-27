@@ -3,9 +3,9 @@ use core::ptr;
 use super::{error::AcpiError, signature::Signature, Rsd};
 
 /// Signature of root SystemDescriptorTable for ACPI versions 2.0+
-const XSDT_SIGNAUTRE: Signature<4> = Signature::new_lossy(['X', 'S', 'D', 'T']);
+const XSDT_SIGNAUTRE: Signature<4> = Signature(*b"XSDT");
 /// Signature of root SystemDescriptorTable for ACPI version 1.0
-const RSDT_SIGNAUTRE: Signature<4> = Signature::new_lossy(['R', 'S', 'D', 'T']);
+const RSDT_SIGNAUTRE: Signature<4> = Signature(*b"RSDT");
 
 /// System Descritpro Table Header
 #[repr(C, packed)]
