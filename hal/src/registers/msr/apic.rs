@@ -13,18 +13,21 @@ bitflags! {
         // bits 0 - 7 are reserved.
         /// Indicates whether the current processor is the bootstrap processor
         const BSP = 1 << 8;
-        // bits 9 - 10 are reserved.
+        // bit 9 is reserved
+        /// Places the local APIC in the x2APIC mode.
+        const X2APIC_ENABLE = 1 << 10;
         /// Enables or disables the local Apic
         const LAPIC_ENABLE = 1 << 11;
-        /// Specifies the base address of the APIC registers. This 24-bit value is extended by 12 bits at the low end to form the base address.
-        const APIC_BASE = 0b111111111111111111111111 << 12;
-         // bits 36-63 reserved
+        /// Addres sof APIC Base registers
+        const APIC_BASE = 0xFFFFFFFFFF << 12;
     }
 }
 #[derive(Debug, thiserror_no_std::Error)]
 pub enum ApicError {
     #[error("APIC_BASE register was used, but is not available on this CPU")]
     ApicUnavailable,
+    #[error("The X2APIC feature was used, but is not available on this CPU")]
+    X2ApicUnavailable,
 }
 
 // Safety: IA32_EFER is a valid MSR index.
@@ -33,8 +36,16 @@ unsafe impl ModelSpecificRegister for Apic {
     type ReadError = ApicError;
     type WriteError = ApicError;
 
+    /// Write the IA32_APIC_BASE register if feature is available to CPU. Returns an error value on failure.
+    ///
+    /// # Safety
+    /// Caller must be in privilege level 0. The caller must also guarnatee that the base address field is valid (if provided).
     unsafe fn write(self, msr: Msr) -> Result<(), ApicError> {
         if Self::available(msr.get_cpuid()) {
+            if self.contains(Apic::X2APIC_ENABLE) && !Self::x2apic_available(msr.get_cpuid()) {
+                return Err(ApicError::X2ApicUnavailable);
+            }
+
             // Safety: Caller guarantees that we are in privilege level 0, Self::MSR_INDEX is a valid index.
             unsafe { msr.write(Self::MSR_INDEX, self.bits()) }
             Ok(())
@@ -60,5 +71,15 @@ impl Apic {
     /// **Warning**: On early AMD K5 processors this is used to indicate support for PGE instead.
     pub fn available(cpuid: Cpuid) -> bool {
         unsafe { cpuid.get(0x80000001) }.edx & (1 << 9) != 0
+    }
+
+    /// Check whether the X2APIC feauture is available to the CPU
+    pub fn x2apic_available(cpuid: Cpuid) -> bool {
+        unsafe { cpuid.get(0x80000001) }.ecx & (1 << 21) != 0
+    }
+
+    /// Extracts physical base address of apic registers.
+    pub fn base(&self) -> u64 {
+        self.bits() & 0x_000F_FFFF_FFFF_F000
     }
 }
