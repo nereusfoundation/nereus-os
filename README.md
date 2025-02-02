@@ -20,18 +20,17 @@ cd nereus-os
 
 ### Running
 
+To change the default configuration, use `-h` for more options.
+
 #### QEMU
 
 ```bash
-make run release=true
+cargo run -- --release
 ```
 
 #### Real Machine
 
 ```bash
-make usb USB_DEVICE=/dev/<device> release=true
+sudo -E cargo run -- --run-option usb --usb /dev/<device> --release
 ```
-
-> Makefile will later be replaced by proper boot utility
-
 
