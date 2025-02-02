@@ -20,7 +20,13 @@ fn main() {
 
     if matches!(args.run_option, RunOption::Qemu | RunOption::Usb) {
         println!("building boot img - this may take a while...");
-        match build_img(kernel, loader, args.font_path.as_path(), img.as_path()) {
+        match build_img(
+            kernel,
+            loader,
+            args.font_path.as_path(),
+            img.as_path(),
+            args.release,
+        ) {
             Ok(_) => println!("build complete."),
             Err(err) => {
                 eprintln!("build failed - error: {}.", err);
@@ -55,7 +61,7 @@ fn main() {
                 Err(err) => eprintln!("emulation failed - error: {}.", err),
             }
         }
-        RunOption::Clippy => match clippy::all(kernel, loader) {
+        RunOption::Clippy => match clippy::all(kernel, loader, args.release) {
             Ok(_) => println!("clippy invocation complete."),
             Err(err) => eprintln!("clippy failed - error: {}.", err),
         },

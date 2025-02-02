@@ -49,4 +49,7 @@ pub(super) struct Args {
     /// Run option (qemu, usb, or clippy, clean)
     #[arg(long, value_enum, default_value_t = RunOption::Qemu)]
     pub run_option: RunOption,
+    /// Build in release mode (`cargo build --release`)
+    #[arg(long, short, action)]
+    pub release: bool,
 }
