@@ -1,35 +1,25 @@
-use std::path::{Path, PathBuf};
+use std::io::ErrorKind;
 
+use clap::Parser;
+use cli::Args;
+use error::BootUtilityError;
 use img::build_img;
 use run::{clippy, qemu::QemuConfig, usb, RunOption};
 
-// todo: proper clap interface
-const KERNEL_DIR: &str = "kernel";
-const LOADER_DIR: &str = "uefi-loader";
-const FONT_PATH: &str = "psf/light16.psf";
-const IMG_PATH: &str = "nereus-os.img";
-
-const OVMF_CODE: &str = "/usr/share/OVMF/x64/OVMF_CODE.4m.fd";
-const OVMF_VARS: &str = "/usr/share/OVMF/x64/OVMF_VARS.4m.fd";
-const QEMU_LOG: &str = "qemu.log";
-const QEMU_SERIAL: &str = "file:stdio.log";
-const MEM_MB: u64 = 512;
-
-const USB: &str = "/dev/sda";
-
+mod cli;
 mod error;
 mod img;
 mod run;
 
 fn main() {
-    let opt = RunOption::Qemu;
+    let args = Args::parse();
 
-    let img = PathBuf::from(IMG_PATH);
-    let kernel = Path::new(KERNEL_DIR);
-    let loader = Path::new(LOADER_DIR);
+    let img = args.img_path;
+    let kernel = args.kernel_dir.as_path();
+    let loader = args.loader_dir.as_path();
 
-    if matches!(opt, RunOption::Qemu | RunOption::Usb) {
-        match build_img(kernel, loader, Path::new(FONT_PATH), img.as_path()) {
+    if matches!(args.run_option, RunOption::Qemu | RunOption::Usb) {
+        match build_img(kernel, loader, args.font_path.as_path(), img.as_path()) {
             Ok(_) => println!("build complete."),
             Err(err) => {
                 eprintln!("build failed - error: {}.", err);
@@ -37,22 +27,26 @@ fn main() {
             }
         }
     }
-    match opt {
-        RunOption::Usb => match usb::write_img(img, PathBuf::from(USB)) {
+    match args.run_option {
+        RunOption::Usb => match usb::write_img(img, args.usb.unwrap()) {
             Ok(_) => println!("usb ready."),
-            Err(err) => eprintln!(
-                "usb formatting failed - error: {}. Hint: use `sudo -E cargo run`",
-                err
-            ),
+            Err(err) => {
+                eprintln!("usb formatting failed - error: {}.", err);
+                if let BootUtilityError::Io(io_err) = err {
+                    if io_err.kind() == ErrorKind::PermissionDenied {
+                        eprintln!("hint: use `sudo -E <cmd>`")
+                    }
+                }
+            }
         },
         RunOption::Qemu => {
             let qemu = QemuConfig::new(
-                PathBuf::from(OVMF_CODE),
-                PathBuf::from(OVMF_VARS),
+                args.ovmf_code,
+                args.ovmf_vars,
                 img,
-                PathBuf::from(QEMU_LOG),
-                PathBuf::from(QEMU_SERIAL),
-                MEM_MB,
+                args.qemu_log,
+                args.qemu_serial,
+                args.mem_mb,
             );
 
             match qemu.run() {
