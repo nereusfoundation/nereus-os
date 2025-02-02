@@ -4,7 +4,7 @@ use clap::Parser;
 use cli::Args;
 use error::BootUtilityError;
 use img::build_img;
-use run::{clippy, qemu::QemuConfig, usb, RunOption};
+use run::{clean, clippy, qemu::QemuConfig, usb, RunOption};
 
 mod cli;
 mod error;
@@ -19,6 +19,7 @@ fn main() {
     let loader = args.loader_dir.as_path();
 
     if matches!(args.run_option, RunOption::Qemu | RunOption::Usb) {
+        println!("building boot img - this may take a while...");
         match build_img(kernel, loader, args.font_path.as_path(), img.as_path()) {
             Ok(_) => println!("build complete."),
             Err(err) => {
@@ -57,6 +58,10 @@ fn main() {
         RunOption::Clippy => match clippy::all(kernel, loader) {
             Ok(_) => println!("clippy invocation complete."),
             Err(err) => eprintln!("clippy failed - error: {}.", err),
+        },
+        RunOption::Clean => match clean(&img) {
+            Ok(_) => println!("cleaning complete."),
+            Err(err) => eprintln!("cleaning failed - error: {}.", err),
         },
     }
 }

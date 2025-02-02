@@ -46,7 +46,7 @@ pub(super) struct Args {
     /// USB device path (required only if `run_option` is `usb`)
     #[arg(long, required_if_eq("run_option", "usb"))]
     pub usb: Option<PathBuf>,
-    /// Run option (qemu, usb, or clippy)
+    /// Run option (qemu, usb, or clippy, clean)
     #[arg(long, value_enum, default_value_t = RunOption::Qemu)]
     pub run_option: RunOption,
 }
