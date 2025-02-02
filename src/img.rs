@@ -14,10 +14,10 @@ use serde_json::Value;
 const FAT32_OVERHEAD: u64 = 1024 * 1024; // 1 MB
 const DIR_OVERHEAD: u64 = 4 * 1024; // 4KB
 
-/// Builds the cargo project at the given path and returns the path to the executable as well as
+/// Builds the cargo project at the given path and returns the executable file as well as
 /// it's size.
-fn exec_path(path: PathBuf) -> Result<(std::fs::File, u64), BootUtilityError> {
-    // move to kernel project dir
+fn build(path: PathBuf) -> Result<(std::fs::File, u64), BootUtilityError> {
+    // move to project dir
     env::set_current_dir(&path).map_err(BootUtilityError::from)?;
 
     let out = Command::new("cargo")
@@ -82,8 +82,8 @@ pub(super) fn build_img(
         .map_err(BootUtilityError::from)?
         .into();
     let initial_dir = env::current_dir().map_err(BootUtilityError::from)?;
-    let (kernel_original, kernel_size) = exec_path(base.join(kernel))?;
-    let (loader_original, loader_size) = exec_path(base.join(loader))?;
+    let (kernel_original, kernel_size) = build(base.join(kernel))?;
+    let (loader_original, loader_size) = build(base.join(loader))?;
     env::set_current_dir(initial_dir).map_err(BootUtilityError::from)?;
 
     let font_original = File::open(font).map_err(BootUtilityError::from)?;
