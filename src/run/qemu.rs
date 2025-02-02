@@ -36,9 +36,8 @@ impl QemuConfig {
 impl QemuConfig {
     /// Runs the qemu command with the specified config.
     pub(crate) fn run(&self) -> Result<(), BootUtilityError> {
-        let mut cmd = Command::new("qemu-system-x86_64");
-
-        cmd.arg("-drive")
+        Command::new("qemu-system-x86_64")
+            .arg("-drive")
             .arg(format!(
                 "if=pflash,format=raw,readonly=on,file={}",
                 self.ovmf_code.as_os_str().to_string_lossy()
@@ -61,10 +60,9 @@ impl QemuConfig {
             .arg("-serial")
             .arg(format!("{}", self.serial.as_os_str().to_string_lossy()))
             .arg("-m")
-            .arg(format!("{}M", self.memory));
-
-        cmd.spawn().map_err(BootUtilityError::from)?;
-
-        Ok(())
+            .arg(format!("{}M", self.memory))
+            .status()
+            .map_err(BootUtilityError::from)
+            .map(|_| ())
     }
 }

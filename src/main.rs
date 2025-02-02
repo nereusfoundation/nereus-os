@@ -25,10 +25,12 @@ mod img;
 mod run;
 
 fn main() {
-    let opt = RunOption::Clippy;
+    let opt = RunOption::Qemu;
+
     let img = PathBuf::from(IMG_PATH);
     let kernel = Path::new(KERNEL_DIR);
     let loader = Path::new(LOADER_DIR);
+
     if matches!(opt, RunOption::Qemu | RunOption::Usb) {
         match build_img(kernel, loader, Path::new(FONT_PATH), img.as_path()) {
             Ok(_) => println!("build complete."),
@@ -57,12 +59,12 @@ fn main() {
             );
 
             match qemu.run() {
-                Ok(_) => println!("emulation started."),
+                Ok(_) => println!("emulation complete."),
                 Err(err) => eprintln!("emulation failed - error: {}.", err),
             }
         }
         RunOption::Clippy => match clippy::all(kernel, loader) {
-            Ok(_) => println!("clippy invocation successful."),
+            Ok(_) => println!("clippy invocation complete."),
             Err(err) => eprintln!("clippy failed - error: {}.", err),
         },
     }

@@ -17,10 +17,8 @@ const DIR_OVERHEAD: u64 = 4 * 1024; // 4KB
 /// Builds the cargo project at the given path and returns the executable file as well as
 /// it's size.
 fn build(path: PathBuf) -> Result<(std::fs::File, u64), BootUtilityError> {
-    // move to project dir
-    env::set_current_dir(&path).map_err(BootUtilityError::from)?;
-
     let out = Command::new("cargo")
+        .current_dir(&path)
         .arg("build")
         .arg("--message-format=json")
         .output()
@@ -81,10 +79,9 @@ pub(super) fn build_img(
     let base: PathBuf = env::var("CARGO_MANIFEST_DIR")
         .map_err(BootUtilityError::from)?
         .into();
-    let initial_dir = env::current_dir().map_err(BootUtilityError::from)?;
+
     let (kernel_original, kernel_size) = build(base.join(kernel))?;
     let (loader_original, loader_size) = build(base.join(loader))?;
-    env::set_current_dir(initial_dir).map_err(BootUtilityError::from)?;
 
     let font_original = File::open(font).map_err(BootUtilityError::from)?;
     let font_size = font_original
@@ -129,7 +126,5 @@ pub(super) fn build_img(
     // copy data from original files to image
     copy_data(kernel_original, kernel).map_err(BootUtilityError::from)?;
     copy_data(loader_original, loader).map_err(BootUtilityError::from)?;
-    copy_data(font_original, font).map_err(BootUtilityError::from)?;
-
-    Ok(())
+    copy_data(font_original, font).map_err(BootUtilityError::from)
 }

@@ -14,8 +14,6 @@ fn run(project: &Path) -> Result<(), BootUtilityError> {
 
 /// Executes the clippy command for the kernel and loader projects
 pub(crate) fn all(kernel: &Path, loader: &Path) -> Result<(), BootUtilityError> {
-    println!("clippy - kernel:");
     run(kernel)?;
-    println!("clippy - loader:");
     run(loader)
 }
