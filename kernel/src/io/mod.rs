@@ -1,6 +1,7 @@
 use core::arch::asm;
 
 pub(crate) mod apic;
+pub(crate) mod pic;
 
 /// Write 8 bits to the specified port.
 ///

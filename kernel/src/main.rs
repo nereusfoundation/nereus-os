@@ -86,6 +86,15 @@ pub extern "sysv64" fn _start(bootinfo: &mut BootInfo) -> ! {
 
     validate!(result memory::vmm::paging::reclaim_acpi_memory(bootinfo.mmap), "Reclaiming ACPI memory");
 
+    validate!(
+        unsafe { io::pic::remap() },
+        "Initializing programmable interrupt controller"
+    );
+    validate!(
+        unsafe { io::pic::disable() },
+        "Disabling programmable interrupt controller"
+    );
+
     validate!(result io::apic::initialize(), "Initializing advanced programmable interrupt controller");
 
     hal::hlt_loop();
