@@ -9,7 +9,7 @@ use std::{
 };
 
 use crate::error::BootUtilityError;
-use fatfs::{format_volume, FormatVolumeOptions, ReadWriteSeek};
+use fatfs::{format_volume, FormatVolumeOptions, IoBase, ReadWriteSeek, StdIoWrapper};
 use serde_json::Value;
 const FAT32_OVERHEAD: u64 = 1024 * 1024; // 1 MB
 const DIR_OVERHEAD: u64 = 4 * 1024; // 4KB
@@ -57,6 +57,7 @@ fn calc_img_size(kernel: u64, loader: u64, font: u64) -> Result<u64, BootUtility
 fn copy_data<T>(mut src: File, mut dst: T) -> io::Result<()>
 where
     T: ReadWriteSeek,
+    std::io::Error: From<<T as IoBase>::Error>,
 {
     let mut buffer = [0u8; 4096]; // 4 KB buffer
     let mut bytes_read = src.read(&mut buffer)?;
@@ -104,9 +105,10 @@ pub(super) fn build_img(
     img.set_len(size).map_err(BootUtilityError::from)?;
 
     // format image
-    let mut buf_stream = fscommon::BufStream::new(img);
-    format_volume(&mut buf_stream, FormatVolumeOptions::new()).map_err(BootUtilityError::from)?;
-    let fs = fatfs::FileSystem::new(buf_stream, fatfs::FsOptions::new())?;
+    let buf_stream = fscommon::BufStream::new(img);
+    let mut wrapper = StdIoWrapper::from(buf_stream);
+    format_volume(&mut wrapper, FormatVolumeOptions::new()).map_err(BootUtilityError::from)?;
+    let fs = fatfs::FileSystem::new(wrapper, fatfs::FsOptions::new())?;
 
     // create directories and files
     let root = fs.root_dir();

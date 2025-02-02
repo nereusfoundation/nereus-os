@@ -8,4 +8,6 @@ pub(crate) enum BootUtilityError {
     CannotFindExec,
     #[error("Invalid image size")]
     InvalidSize,
+    #[error("FatFs IO error: {0}")]
+    Fatfs(#[from] fatfs::Error<std::io::Error>),
 }

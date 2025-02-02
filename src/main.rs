@@ -3,9 +3,6 @@ use std::path::{Path, PathBuf};
 use img::build_img;
 use run::{clippy, qemu::QemuConfig, usb, RunOption};
 
-extern crate fatfs;
-extern crate fscommon;
-
 // todo: proper clap interface
 const KERNEL_DIR: &str = "kernel";
 const LOADER_DIR: &str = "uefi-loader";

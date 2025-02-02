@@ -31,12 +31,6 @@ checksum = "dc827186963e592360843fb5ba4b973e145841266c1357f7180c43526f2e5b61"
 
 [[package]]
 name = "bitflags"
-version = "1.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
-
-[[package]]
-name = "bitflags"
 version = "2.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8f68f53c83ab957f72c32642f3868eec03eb974d1fb82e453128456482613d36"
@@ -54,12 +48,6 @@ name = "bumpalo"
 version = "3.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1628fb46dfa0b37568d12e5edd512553eccf6a22a78e8bde00bb4aed84d5bdbf"
-
-[[package]]
-name = "byteorder"
-version = "1.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1fd0f2584146f6f2ef48085050886acf353beff7305ebd1ae69500e27c67f64b"
 
 [[package]]
 name = "cc"
@@ -84,9 +72,7 @@ checksum = "7e36cc9d416881d2e24f9a963be5fb1cd90966419ac844274161d10488b3e825"
 dependencies = [
  "android-tzdata",
  "iana-time-zone",
- "js-sys",
  "num-traits",
- "wasm-bindgen",
  "windows-targets",
 ]
 
@@ -98,12 +84,10 @@ checksum = "773648b94d0e5d620f64f280777445740e61fe701025087ec8b57f45c791888b"
 
 [[package]]
 name = "fatfs"
-version = "0.3.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "05669f8e7e2d7badc545c513710f0eba09c2fbef683eb859fd79c46c355048e0"
+version = "0.4.0"
+source = "git+https://github.com/rafalh/rust-fatfs.git?rev=c4bb76929eb115f228720631b4110f827b998653#c4bb76929eb115f228720631b4110f827b998653"
 dependencies = [
- "bitflags 1.3.2",
- "byteorder",
+ "bitflags",
  "chrono",
  "log",
 ]
@@ -145,7 +129,7 @@ dependencies = [
 name = "hal"
 version = "0.1.0"
 dependencies = [
- "bitflags 2.8.0",
+ "bitflags",
  "cc",
  "thiserror-no-std",
 ]
@@ -193,7 +177,7 @@ dependencies = [
 name = "kernel"
 version = "0.1.0"
 dependencies = [
- "bitflags 2.8.0",
+ "bitflags",
  "bootinfo",
  "framebuffer",
  "hal",
@@ -219,7 +203,7 @@ checksum = "04cbf5b083de1c7e0222a7a51dbfdba1cbe1c6ab0b15e29fff3f6c077fd9cd9f"
 name = "mem"
 version = "0.1.0"
 dependencies = [
- "bitflags 2.8.0",
+ "bitflags",
  "thiserror-no-std",
 ]
 
@@ -455,7 +439,7 @@ version = "0.33.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6679b7fc2f6d6d2ea2f67555ef3ed9d71d30c5021faf9193091a5192db7dc468"
 dependencies = [
- "bitflags 2.8.0",
+ "bitflags",
  "cfg-if",
  "log",
  "ptr_meta",
@@ -498,7 +482,7 @@ version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f6d465de2c918779dafb769a5a4fe8d6e4fb7cc4cc6cb1a735f2f6ec68beea4"
 dependencies = [
- "bitflags 2.8.0",
+ "bitflags",
  "ptr_meta",
  "uguid",
 ]
