@@ -6,7 +6,7 @@ use hal::{
     instructions::cpuid::Cpuid,
     registers::msr::{self, apic::Apic, msr_guard::Msr, ModelSpecificRegister},
 };
-use ioapic::KEYBOARD_IRQ;
+use ioapic::{KEYBOARD_IRQ, TIMER_IRQ};
 use mem::PhysicalAddress;
 
 use crate::{
@@ -62,12 +62,26 @@ pub(crate) fn initialize(
         .find(|iso| iso.source() == KEYBOARD_IRQ)
         .map(|iso| iso.gsi() as u8)
         .unwrap_or(KEYBOARD_IRQ);
-
     unsafe {
         ioapic::configure_redirection_entry(
             io_apic_virtual_address,
             keyboard_source,
             0x21,
+            lapic::lapic_id()?,
+            true,
+        );
+    }
+
+    let pit_source = overrides
+        .iter()
+        .find(|iso| iso.source() == TIMER_IRQ)
+        .map(|iso| iso.gsi() as u8)
+        .unwrap_or(TIMER_IRQ);
+    unsafe {
+        ioapic::configure_redirection_entry(
+            io_apic_virtual_address,
+            pit_source,
+            0x20,
             lapic::lapic_id()?,
             true,
         );

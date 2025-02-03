@@ -1,12 +1,12 @@
 use core::arch::{asm, naked_asm};
 
 use error::{ErrorCode, PageFaultErrorCode};
-use framebuffer::color;
+use framebuffer::color::{self, INFO};
 use hal::{cpu_state::CpuState, hlt_loop};
 
 use crate::{
     io::{apic::lapic, inb, keyboard::KEYBOARD},
-    loginfo, println,
+    loginfo, print, println,
 };
 
 mod error;
@@ -40,6 +40,11 @@ fn dispatch(state: &CpuState) -> &CpuState {
             println!(color::ERROR, " [INFO ]: faulting address: {:#x}", cr2);
 
             hlt_loop();
+        }
+        32 => {
+            print!(INFO, ".");
+            lapic::eoi()
+                .expect("LAPIC must have been initialized before enabling hardware interrupts!");
         }
         33 => {
             let scancode = unsafe { inb(0x60) };

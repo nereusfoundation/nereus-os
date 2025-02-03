@@ -3,6 +3,7 @@ use core::arch::asm;
 pub(crate) mod apic;
 pub(crate) mod keyboard;
 pub(crate) mod pic;
+pub(crate) mod timer;
 
 /// Write 8 bits to the specified port.
 ///
@@ -24,4 +25,13 @@ pub(crate) unsafe fn inb(port: u16) -> u8 {
     let value: u8;
     asm!("in al, dx", out("al") value, in("dx") port);
     value
+}
+
+/// Older machines may require to wait a cycle before continuing the io pic communication.
+///
+/// # Safety
+/// Needs IO privileges.
+#[inline]
+pub(crate) unsafe fn io_wait() {
+    asm!("out 0x80, al", in("al") 0u8);
 }

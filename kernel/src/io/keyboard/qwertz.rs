@@ -1,5 +1,3 @@
-use crate::serial_println;
-
 use super::KeyboardType;
 
 #[derive(Debug)]
@@ -20,7 +18,6 @@ impl KeyboardType for Qwertz {
 
     fn translate(scancode: u8, uppercase: bool) -> char {
         let character = *(Self::ASCII_TABLE.get(scancode as usize).unwrap_or(&'\0'));
-        serial_println!("actual: {}", scancode as char);
         if uppercase {
             character.to_ascii_uppercase()
         } else {

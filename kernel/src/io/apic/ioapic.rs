@@ -11,8 +11,8 @@ use super::ApicError;
 
 /// Interrupt Request (IRQ) for PS/2 keyboard entry index
 pub(super) const KEYBOARD_IRQ: u8 = 1;
-// Interrupt Request (IRQ) for pit entry index
-//pub(super) const TIMER_IRQ: u8 = 0;
+/// Interrupt Request (IRQ) for pit entry index
+pub(super) const TIMER_IRQ: u8 = 0;
 
 // I/O APIC Registers for accessing other registers:
 /// I/O Register Select: Is used to select the I/O Register to access

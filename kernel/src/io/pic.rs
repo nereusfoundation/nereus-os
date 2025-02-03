@@ -1,5 +1,4 @@
-use super::{inb, outb};
-use core::arch::asm;
+use super::{inb, io_wait, outb};
 // ports:
 // handled interrupt numbers 0 - 7:
 // control information
@@ -64,13 +63,4 @@ pub(crate) unsafe fn disable() {
     // mask all interrupt ports
     outb(PIC_MASTER_DATA, 0xFF);
     outb(PIC_SLAVE_DATA, 0xFF);
-}
-
-/// Older machines may require to wait a cycle before continuing the io pic communication.
-///
-/// # Safety
-/// Needs IO privileges.
-#[inline]
-unsafe fn io_wait() {
-    asm!("out 0x80, al", in("al") 0u8);
 }

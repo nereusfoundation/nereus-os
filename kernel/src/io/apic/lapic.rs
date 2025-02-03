@@ -58,7 +58,6 @@ pub(crate) fn eoi() -> Result<(), ApicError> {
 }
 
 /// Returns the ID of the local apic.
-///
 pub(super) fn lapic_id() -> Result<u8, ApicError> {
     let locked = LAPIC.locked();
     let lapic_address = *locked.get().ok_or(ApicError::LapicUninitialized)?;

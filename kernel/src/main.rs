@@ -9,6 +9,7 @@ use bootinfo::BootInfo;
 use core::panic::PanicInfo;
 use framebuffer::color::{self};
 use graphics::LOGGER;
+use io::timer::pit;
 use mem::{KHEAP_PAGE_COUNT, KHEAP_VIRTUAL};
 use memory::vmm::{self, paging::PTM};
 
@@ -102,7 +103,13 @@ pub extern "sysv64" fn _start(bootinfo: &mut BootInfo) -> ! {
 
     validate!(result io::apic::initialize(lapic_regs, overrides, io_apics), "Initializing advanced programmable interrupt controller (APIC)");
 
+    validate!(
+        pit::initialize(),
+        "Initializing programmable interval timer"
+    );
+
     validate!(hal::interrupts::enable(), "Enabling hardware interrupts");
+
     hal::hlt_loop();
 }
 
