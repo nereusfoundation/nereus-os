@@ -81,10 +81,8 @@ pub extern "sysv64" fn _start(bootinfo: &mut BootInfo) -> ! {
          memory::vmm::paging::remap_framebuffer(), 
          "Remapping framebuffer as MMIO");
 
-    validate!(result
-        acpi::parse(bootinfo.rsdp), "Parsing ACPI tables");
-
-    validate!(result memory::vmm::paging::reclaim_acpi_memory(bootinfo.mmap), "Reclaiming ACPI memory");
+    let sdt = validate!(result
+        acpi::parse(bootinfo.rsdp), "Parsing ACPI XSDT");
 
     validate!(
         unsafe { io::pic::remap() },
@@ -96,6 +94,11 @@ pub extern "sysv64" fn _start(bootinfo: &mut BootInfo) -> ! {
     );
 
     validate!(result io::apic::initialize(), "Initializing advanced programmable interrupt controller");
+
+    let (lapic_regs, overrides) = validate!(result acpi::madt(sdt), "Parsing ACPI MADT");
+    loginfo!("LAPIC registers address: {:#x}", lapic_regs);
+
+    validate!(result memory::vmm::paging::reclaim_acpi_memory(bootinfo.mmap), "Reclaiming ACPI memory");
 
     hal::hlt_loop();
 }

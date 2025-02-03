@@ -1,4 +1,4 @@
-use core::ptr;
+use core::ptr::{self, NonNull};
 
 use super::{error::AcpiError, signature::Signature, Rsd};
 
@@ -10,7 +10,7 @@ const RSDT_SIGNAUTRE: Signature<4> = Signature(*b"RSDT");
 /// System Descritpro Table Header
 #[repr(C, packed)]
 #[derive(Copy, Clone, Debug)]
-pub(super) struct Header {
+pub(crate) struct Header {
     signature: Signature<4>,
     length: u32,
     revision: u8,
@@ -22,9 +22,15 @@ pub(super) struct Header {
     creator_revision: u32,
 }
 
+impl Header {
+    pub(super) fn length(&self) -> u32 {
+        self.length
+    }
+}
+
 /// Root System Descriptor Table. This table contains pointers to all the other System Description Tables.
 #[derive(Copy, Clone, Debug)]
-pub(super) struct Rsdt {
+pub(crate) struct Rsdt {
     /// Pointer to the root system descriptor table
     ptr: *const Header,
     /// Whether ACPI version 1 or 2+ is being used. Version 1 uses 32-bit pointers.
@@ -51,8 +57,8 @@ impl Rsdt {
 }
 
 impl Rsdt {
-    /// Parses the given system descritpor table based on it's signature.
-    pub(super) fn parse(&self, signature: Signature<4>) -> Result<Header, AcpiError> {
+    /// Parses the given system descritpor table header based on it's signature.
+    pub(super) fn parse_header(&self, signature: Signature<4>) -> Result<Header, AcpiError> {
         let header = unsafe { self.ptr.read_unaligned() };
         let ptr_size = if self.version2 { 8 } else { 4 };
         // amount of remaining pointers to the other tables that fit into the total size of the XSDT
@@ -61,8 +67,33 @@ impl Rsdt {
         for i in 0..entries {
             let entry_ptr = unsafe { base_ptr.add(i * ptr_size) };
             let entry = unsafe { **(entry_ptr.cast::<*const Header>()) };
+
             if signature == entry.signature {
                 return Ok(entry);
+            }
+        }
+
+        Err(AcpiError::TableNotFound(signature))
+    }
+
+    /// Parses the given system descriptor table based on it's signature, yielding a pointer to the
+    /// table.
+    pub(super) fn parse_table<T>(&self, signature: Signature<4>) -> Result<NonNull<T>, AcpiError> {
+        let header = unsafe { self.ptr.read_unaligned() };
+        let ptr_size = if self.version2 { 8 } else { 4 };
+        // amount of remaining pointers to the other tables that fit into the total size of the XSDT
+        let entries = (header.length as usize - size_of::<Header>()) / ptr_size;
+        let base_ptr = unsafe { self.ptr.add(1).cast::<u8>() };
+        for i in 0..entries {
+            let entry_ptr = unsafe { base_ptr.add(i * ptr_size) };
+            let entry = unsafe { **(entry_ptr.cast::<*const Header>()) };
+
+            if signature == entry.signature {
+                return unsafe {
+                    Ok(NonNull::new_unchecked(
+                        (entry_ptr.cast::<*mut T>()).read_unaligned(),
+                    ))
+                };
             }
         }
 

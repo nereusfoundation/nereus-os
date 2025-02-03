@@ -1,7 +1,10 @@
+mod lapic;
+
 use hal::{
     instructions::cpuid::Cpuid,
     registers::msr::{self, apic::Apic, msr_guard::Msr, ModelSpecificRegister},
 };
+use mem::PhysicalAddress;
 
 #[derive(Debug, thiserror_no_std::Error)]
 pub(crate) enum ApicError {
@@ -14,10 +17,10 @@ pub(crate) enum ApicError {
 }
 
 /// Initializes the Advanced Programmable Interrupt Controller.
-pub(crate) fn initialize() -> Result<(), ApicError> {
+pub(crate) fn initialize() -> Result<PhysicalAddress, ApicError> {
     let cpuid = Cpuid::new().ok_or(ApicError::CpuidUnavailable)?;
     let msr = Msr::new(cpuid).ok_or(ApicError::MsrUnavailable)?;
     let apic = unsafe { Apic::read(msr)? };
-    let _address = apic.base();
-    Ok(())
+
+    Ok(apic.base())
 }
