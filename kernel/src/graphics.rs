@@ -56,6 +56,7 @@ macro_rules! validate {
                 println!();
                 print!(::framebuffer::color::ERROR, " [ERROR]: ");
                 println!(::framebuffer::color::LOG, "{}", err);
+                unimplemented!("error recovery");
             }
         }
     }};

@@ -47,6 +47,8 @@ bitflags! {
         const USER = 1 << 2;
         /// If set, the objects is mapped to MMIO and therefore does not need to request pages when allocated.
         const MMIO = 1 << 3;
+        /// If set, the CPU does not cache any data in that memory region.
+        const NO_CACHE = 1 << 4;
     }
 }
 
@@ -62,6 +64,10 @@ impl From<VmFlags> for PageEntryFlags {
         }
         if value.contains(VmFlags::USER) {
             flags |= PageEntryFlags::USER_SUPER;
+        }
+        if value.contains(VmFlags::NO_CACHE) {
+            // todo: maybe add PAT configuration for strong ordering
+            flags |= PageEntryFlags::CACHE_DISABLED;
         }
         flags
     }

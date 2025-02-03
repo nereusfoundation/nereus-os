@@ -4,7 +4,10 @@ use error::{ErrorCode, PageFaultErrorCode};
 use framebuffer::color;
 use hal::{cpu_state::CpuState, hlt_loop};
 
-use crate::{loginfo, println};
+use crate::{
+    io::{apic::lapic, inb},
+    loginfo, println,
+};
 
 mod error;
 pub(super) mod handler;
@@ -37,6 +40,12 @@ fn dispatch(state: &CpuState) -> &CpuState {
             println!(color::ERROR, " [INFO ]: faulting address: {:#x}", cr2);
 
             hlt_loop();
+        }
+        33 => {
+            let scancode = unsafe { inb(0x60) };
+            loginfo!("received keyboard int: {:#x}", scancode);
+            lapic::eoi()
+                .expect("LAPIC must have been initialized before enabling hardware interrupts!");
         }
 
         unknown => {
