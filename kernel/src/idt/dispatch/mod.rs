@@ -5,7 +5,7 @@ use framebuffer::color;
 use hal::{cpu_state::CpuState, hlt_loop};
 
 use crate::{
-    io::{apic::lapic, inb},
+    io::{apic::lapic, inb, keyboard::KEYBOARD},
     loginfo, println,
 };
 
@@ -43,7 +43,8 @@ fn dispatch(state: &CpuState) -> &CpuState {
         }
         33 => {
             let scancode = unsafe { inb(0x60) };
-            loginfo!("received keyboard int: {:#x}", scancode);
+            let mut binding = KEYBOARD.lock();
+            binding.handle(scancode);
             lapic::eoi()
                 .expect("LAPIC must have been initialized before enabling hardware interrupts!");
         }
