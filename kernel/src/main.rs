@@ -93,13 +93,16 @@ pub extern "sysv64" fn _start(bootinfo: &mut BootInfo) -> ! {
         "Disabling programmable interrupt controller"
     );
 
-    validate!(result io::apic::initialize(), "Initializing advanced programmable interrupt controller");
+    validate!(result io::apic::enable(), "Checking for APIC");
 
-    let (lapic_regs, overrides) = validate!(result acpi::madt(sdt), "Parsing ACPI MADT");
+    let (lapic_regs, overrides, io_apics) = validate!(result acpi::madt(sdt), "Parsing ACPI MADT");
     loginfo!("LAPIC registers address: {:#x}", lapic_regs);
 
     validate!(result memory::vmm::paging::reclaim_acpi_memory(bootinfo.mmap), "Reclaiming ACPI memory");
 
+    validate!(result io::apic::initialize(lapic_regs, overrides, io_apics), "Initializing advanced programmable interrupt controller (APIC)");
+
+    validate!(hal::interrupts::enable(), "Enabling hardware interrupts");
     hal::hlt_loop();
 }
 

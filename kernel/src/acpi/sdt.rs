@@ -57,25 +57,6 @@ impl Rsdt {
 }
 
 impl Rsdt {
-    /// Parses the given system descritpor table header based on it's signature.
-    pub(super) fn parse_header(&self, signature: Signature<4>) -> Result<Header, AcpiError> {
-        let header = unsafe { self.ptr.read_unaligned() };
-        let ptr_size = if self.version2 { 8 } else { 4 };
-        // amount of remaining pointers to the other tables that fit into the total size of the XSDT
-        let entries = (header.length as usize - size_of::<Header>()) / ptr_size;
-        let base_ptr = unsafe { self.ptr.add(1).cast::<u8>() };
-        for i in 0..entries {
-            let entry_ptr = unsafe { base_ptr.add(i * ptr_size) };
-            let entry = unsafe { **(entry_ptr.cast::<*const Header>()) };
-
-            if signature == entry.signature {
-                return Ok(entry);
-            }
-        }
-
-        Err(AcpiError::TableNotFound(signature))
-    }
-
     /// Parses the given system descriptor table based on it's signature, yielding a pointer to the
     /// table.
     pub(super) fn parse_table<T>(&self, signature: Signature<4>) -> Result<NonNull<T>, AcpiError> {

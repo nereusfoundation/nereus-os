@@ -27,4 +27,5 @@ assign_isr!(
     28, GateType::TrapGate, 0
     29, GateType::TrapGate, 0, error
     30, GateType::TrapGate, 0, error
+    0x21, GateType::InterruptGate, 0 // keyboard interrupts
 );

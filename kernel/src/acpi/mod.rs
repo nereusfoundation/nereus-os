@@ -1,6 +1,9 @@
 use alloc::vec::Vec;
 use error::AcpiError;
-use madt::{entry::InterruptSourceOverride, Madt};
+use madt::{
+    entry::{InterruptSourceOverride, IoApic},
+    Madt,
+};
 use mem::PhysicalAddress;
 use rsd::Rsd;
 use sdt::Rsdt;
@@ -21,13 +24,14 @@ pub(crate) fn parse(rsdp: *const u8) -> Result<Rsdt, AcpiError> {
 }
 
 /// Parses the MADT and returns the physical address of the local apic registers as well as
-/// interrupt source overrides.
+/// interrupt source overrides and IOApics.
 pub(crate) fn madt(
     sdt: Rsdt,
-) -> Result<(PhysicalAddress, Vec<InterruptSourceOverride>), AcpiError> {
+) -> Result<(PhysicalAddress, Vec<InterruptSourceOverride>, Vec<IoApic>), AcpiError> {
     let madt = unsafe { sdt.parse_table::<Madt>(Signature(*b"APIC"))?.as_ref() };
     Ok((
         madt.lapic_registers(),
         madt.parse_entries::<InterruptSourceOverride>(),
+        madt.parse_entries::<IoApic>(),
     ))
 }

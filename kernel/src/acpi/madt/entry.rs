@@ -1,3 +1,4 @@
+#![allow(dead_code)] // keeping all variants of MADT entries, for possible use in the future.
 use bitflags::bitflags;
 use mem::PhysicalAddress;
 
