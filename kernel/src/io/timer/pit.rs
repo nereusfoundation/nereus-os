@@ -1,4 +1,10 @@
-#![allow(dead_code)] // enum variants kept for completness and readability
+#![allow(dead_code)]
+use core::{
+    hint::spin_loop,
+    sync::atomic::{AtomicU64, Ordering},
+};
+
+// enum variants kept for completness and readability
 use sync::spin::SpinLock;
 
 use crate::io::{io_wait, outb};
@@ -8,6 +14,10 @@ const COMMAND_REGISTER: u16 = 0x43;
 
 const MAX_DIVISOR: u16 = 65535;
 const DIVISOR: u16 = MAX_DIVISOR;
+
+const BASE_CLOCK: u64 = 1193182;
+
+static TICK_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 pub(crate) static PIT: SpinLock<Pit> = SpinLock::new(Pit::new());
 
@@ -60,6 +70,24 @@ impl Pit {
         // send higher half of divisor
         outb(CHANNEL_0_DATA, ((self.divisor & 0xff00) >> 8) as u8);
         io_wait();
+    }
+}
+
+#[inline]
+pub(crate) fn tick() {
+    TICK_COUNTER.fetch_add(1, Ordering::Relaxed);
+}
+
+impl Pit {
+    pub(crate) fn sleep(&self, millis: u64) {
+        let frequency = BASE_CLOCK / self.divisor as u64;
+        let ticks_to_sleep = (millis * frequency) / 1000;
+        let start_ticks = TICK_COUNTER.load(Ordering::Relaxed);
+        let target_ticks = start_ticks + ticks_to_sleep;
+
+        while TICK_COUNTER.load(Ordering::Relaxed) < target_ticks {
+            spin_loop();
+        }
     }
 }
 

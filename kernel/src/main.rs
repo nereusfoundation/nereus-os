@@ -13,6 +13,8 @@ use io::timer::pit;
 use mem::{KHEAP_PAGE_COUNT, KHEAP_VIRTUAL};
 use memory::vmm::{self, paging::PTM};
 
+use crate::pit::PIT;
+
 extern crate alloc;
 
 mod acpi;
@@ -110,6 +112,11 @@ pub extern "sysv64" fn _start(bootinfo: &mut BootInfo) -> ! {
 
     validate!(hal::interrupts::enable(), "Enabling hardware interrupts");
 
+    // test sleep functionality
+    let pit = PIT.lock();
+    loginfo!("pit: sleeping for 10s");
+    pit.sleep(10000);
+    loginfo!("pit: woke up");
     hal::hlt_loop();
 }
 

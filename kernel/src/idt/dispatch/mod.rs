@@ -6,7 +6,7 @@ use hal::{cpu_state::CpuState, hlt_loop};
 
 use crate::{
     io::{apic::lapic, inb, keyboard::KEYBOARD},
-    loginfo, print, println,
+    loginfo, pit, print, println,
 };
 
 mod error;
@@ -42,6 +42,7 @@ fn dispatch(state: &CpuState) -> &CpuState {
             hlt_loop();
         }
         32 => {
+            pit::tick();
             print!(INFO, ".");
             lapic::eoi()
                 .expect("LAPIC must have been initialized before enabling hardware interrupts!");
