@@ -1,5 +1,7 @@
 use core::cell::LazyCell;
 
+use hal::interrupts::without_interrupts;
+
 use crate::serial::{uart::SerialPort, PORT};
 
 #[macro_export]
@@ -16,9 +18,11 @@ macro_rules! retry_until_ok {
 #[doc(hidden)]
 pub(crate) fn _print(args: ::core::fmt::Arguments) {
     use core::fmt::Write;
-    let mut locked = PORT.lock();
-    let port = LazyCell::<SerialPort>::force_mut(&mut locked);
-    port.write_fmt(args).expect("Printing to serial failed");
+    without_interrupts(|| {
+        let mut locked = PORT.lock();
+        let port = LazyCell::<SerialPort>::force_mut(&mut locked);
+        port.write_fmt(args).expect("Printing to serial failed");
+    });
 }
 
 #[macro_export]

@@ -1,11 +1,8 @@
-#![allow(dead_code)]
+#![allow(dead_code)] // enum variants kept for completness and readability
 use core::{
     hint::spin_loop,
     sync::atomic::{AtomicU64, Ordering},
 };
-
-// enum variants kept for completness and readability
-use sync::spin::SpinLock;
 
 use crate::io::{io_wait, outb};
 
@@ -13,81 +10,49 @@ const CHANNEL_0_DATA: u16 = 0x40;
 const COMMAND_REGISTER: u16 = 0x43;
 
 const MAX_DIVISOR: u16 = 65535;
-const DIVISOR: u16 = MAX_DIVISOR;
+const DIVISOR: u16 = (1193182 / FREQUENCY as u64) as u16;
 
 const BASE_CLOCK: u64 = 1193182;
 
+pub(crate) const FREQUENCY: u16 = 100;
+
 static TICK_COUNTER: AtomicU64 = AtomicU64::new(0);
 
-pub(crate) static PIT: SpinLock<Pit> = SpinLock::new(Pit::new());
-
 /// Initializes the programmable interval timer
-pub(crate) fn initialize() {
-    let mut locked = PIT.lock();
-    unsafe {
-        locked.set_divisor(DIVISOR);
-    }
-}
+///
+/// # Safety Requires IO privileges.
+pub(crate) unsafe fn initialize() {
+    let divisor = DIVISOR;
+    let config = ConfigurationByte::new(
+        false,
+        OperatingMode::RateGenerator,
+        AccessMode::LoByteHiByte,
+        ChannelSelector::Interrupts,
+    );
 
-/// Programmable Interval Timer
-#[derive(Debug)]
-pub(crate) struct Pit {
-    divisor: u16,
-}
-
-impl Pit {
-    const fn new() -> Self {
-        Self {
-            divisor: MAX_DIVISOR,
-        }
-    }
-}
-
-impl Pit {
-    /// Set divisor of PIT. Also enables it, if it hasn't been enabled already.
-    ///
-    /// # Safety
-    /// Requires IO privileges.
-    unsafe fn set_divisor(&mut self, mut divisor: u16) {
-        if divisor < 100 {
-            divisor = 100;
-        }
-
-        let config = ConfigurationByte::new(
-            false,
-            OperatingMode::RateGenerator,
-            AccessMode::LoByteHiByte,
-            ChannelSelector::Interrupts,
-        );
-
-        self.divisor = divisor;
-        // set mode 2 (rate generator)
-        outb(COMMAND_REGISTER, config.0);
-        io_wait();
-        // send lower half of divisor
-        outb(CHANNEL_0_DATA, (self.divisor & 0x00ff) as u8);
-        io_wait();
-        // send higher half of divisor
-        outb(CHANNEL_0_DATA, ((self.divisor & 0xff00) >> 8) as u8);
-        io_wait();
-    }
+    // set mode 2 (rate generator)
+    outb(COMMAND_REGISTER, config.0);
+    io_wait();
+    // send lower half of divisor
+    outb(CHANNEL_0_DATA, (divisor & 0x00ff) as u8);
+    io_wait();
+    // send higher half of divisor
+    outb(CHANNEL_0_DATA, ((divisor & 0xff00) >> 8) as u8);
+    io_wait();
 }
 
 #[inline]
 pub(crate) fn tick() {
     TICK_COUNTER.fetch_add(1, Ordering::Relaxed);
 }
+pub(crate) fn sleep(millis: u64) {
+    let frequency = BASE_CLOCK / DIVISOR as u64;
+    let ticks_to_sleep = (millis * frequency) / 1000;
+    let start_ticks = TICK_COUNTER.load(Ordering::Relaxed);
+    let target_ticks = start_ticks + ticks_to_sleep;
 
-impl Pit {
-    pub(crate) fn sleep(&self, millis: u64) {
-        let frequency = BASE_CLOCK / self.divisor as u64;
-        let ticks_to_sleep = (millis * frequency) / 1000;
-        let start_ticks = TICK_COUNTER.load(Ordering::Relaxed);
-        let target_ticks = start_ticks + ticks_to_sleep;
-
-        while TICK_COUNTER.load(Ordering::Relaxed) < target_ticks {
-            spin_loop();
-        }
+    while TICK_COUNTER.load(Ordering::Relaxed) < target_ticks {
+        spin_loop();
     }
 }
 

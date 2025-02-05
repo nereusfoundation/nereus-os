@@ -9,11 +9,12 @@ use bootinfo::BootInfo;
 use core::panic::PanicInfo;
 use framebuffer::color::{self};
 use graphics::LOGGER;
-use io::timer::pit;
+use io::{
+    apic::lapic,
+    timer::{lapict, pit},
+};
 use mem::{KHEAP_PAGE_COUNT, KHEAP_VIRTUAL};
 use memory::vmm::{self, paging::PTM};
-
-use crate::pit::PIT;
 
 extern crate alloc;
 
@@ -106,17 +107,14 @@ pub extern "sysv64" fn _start(bootinfo: &mut BootInfo) -> ! {
     validate!(result io::apic::initialize(lapic_regs, overrides, io_apics), "Initializing advanced programmable interrupt controller (APIC)");
 
     validate!(
-        pit::initialize(),
+        unsafe { pit::initialize() },
         "Initializing programmable interval timer"
     );
+    loginfo!("PIT frequency: {} Hz", pit::FREQUENCY);
 
     validate!(hal::interrupts::enable(), "Enabling hardware interrupts");
-
-    // test sleep functionality
-    let pit = PIT.lock();
-    loginfo!("pit: sleeping for 10s");
-    pit.sleep(10000);
-    loginfo!("pit: woke up");
+    validate!(result lapict::initialize(), "Initializing LAPIC timer");
+    loginfo!("LAPIC timer is callibrated to PIT frequency");
     hal::hlt_loop();
 }
 

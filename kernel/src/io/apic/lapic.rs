@@ -1,5 +1,9 @@
-use mem::{PhysicalAddress, VirtualAddress, PAGE_SIZE};
-use sync::locked::Locked;
+use core::{
+    ptr,
+    sync::atomic::{AtomicPtr, Ordering},
+};
+
+use mem::{PhysicalAddress, PAGE_SIZE};
 
 use crate::vmm::{error::VmmError, object::VmFlags, AllocationType, VMM};
 
@@ -10,7 +14,22 @@ const EOI_OFFSET: usize = 0xB0;
 const TASK_PRIORITY_OFFSET: usize = 0x80;
 const LOCAL_APIC_ID_OFFSET: usize = 0x20;
 
-static LAPIC: Locked<VirtualAddress> = Locked::new();
+pub(in crate::io) const LVT_TIMER_OFFSET: usize = 0x320;
+pub(in crate::io) const INITIAL_COUNT_OFFSET: usize = 0x380;
+pub(in crate::io) const CURRENT_COUNT_OFFSET: usize = 0x390;
+pub(in crate::io) const DIVIDE_CONFIGURATION_OFFSET: usize = 0x3E0;
+
+static LAPIC: AtomicPtr<u8> = AtomicPtr::new(ptr::null_mut::<u8>());
+
+/// Attempts to retrive the address of the LAPIC registers.
+pub(crate) fn get() -> Result<*mut u8, ApicError> {
+    let load = LAPIC.load(Ordering::Relaxed);
+    if load.is_null() {
+        Err(ApicError::LapicUninitialized)
+    } else {
+        Ok(load)
+    }
+}
 
 pub(crate) fn initialize(base: PhysicalAddress) -> Result<(), VmmError> {
     let mut locked = VMM.locked();
@@ -38,18 +57,17 @@ pub(crate) fn initialize(base: PhysicalAddress) -> Result<(), VmmError> {
         task_priority_register.write_volatile(0x0);
     }
 
-    LAPIC.initialize(virtual_base);
+    LAPIC.store(virtual_base as *mut u8, Ordering::Relaxed);
 
     Ok(())
 }
 
 /// Send the lapic the signal that an interrupt has been handled.
 pub(crate) fn eoi() -> Result<(), ApicError> {
-    let locked = LAPIC.locked();
-    let lapic_address = *locked.get().ok_or(ApicError::LapicUninitialized)?;
+    let lapic_address = get()?;
     unsafe {
         // mmio to register has already been mapped in enable function.
-        let eoi_register = (lapic_address as *mut u8).add(EOI_OFFSET) as *mut u32;
+        let eoi_register = lapic_address.add(EOI_OFFSET) as *mut u32;
         // signal end of interrupt
         eoi_register.write_volatile(0);
     }
@@ -59,10 +77,9 @@ pub(crate) fn eoi() -> Result<(), ApicError> {
 
 /// Returns the ID of the local apic.
 pub(super) fn lapic_id() -> Result<u8, ApicError> {
-    let locked = LAPIC.locked();
-    let lapic_address = *locked.get().ok_or(ApicError::LapicUninitialized)?;
+    let lapic_address = get()?;
     unsafe {
-        let id_reigster = (lapic_address as *const u8).add(LOCAL_APIC_ID_OFFSET);
+        let id_reigster = lapic_address.add(LOCAL_APIC_ID_OFFSET);
         Ok(*id_reigster)
     }
 }

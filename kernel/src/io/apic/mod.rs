@@ -81,7 +81,7 @@ pub(crate) fn initialize(
         ioapic::configure_redirection_entry(
             io_apic_virtual_address,
             pit_source,
-            0x20,
+            0x22,
             lapic::lapic_id()?,
             true,
         );

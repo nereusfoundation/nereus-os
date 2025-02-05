@@ -76,9 +76,9 @@ pub(super) unsafe fn configure_redirection_entry(
     let high_index = low_index + 1;
 
     // construct lower register of redirection entry (delivery mode=000, destination mode=physical, pin polarity=active-high, trigger mode=edge
-    let mut lvt = LocalVectorTableEntry::from_bits_truncate(idt_vector_index as u32);
+    let mut lvt = LintLocalVectorTableEntry::from_bits_truncate(idt_vector_index as u32);
     if !enable {
-        lvt.insert(LocalVectorTableEntry::INTERRUPT_MASK);
+        lvt.insert(LintLocalVectorTableEntry::INTERRUPT_MASK);
     }
 
     // construct higher register of redirection entry
@@ -90,17 +90,16 @@ pub(super) unsafe fn configure_redirection_entry(
 }
 
 bitflags! {
-    /// General structure of all LVT entries, except the timer entry (and the thermal sensor and performance entries ignore bits 15:13)
+    /// General structure of the LINT0 and LINT1 LVT entries
     #[repr(C)]
     #[derive(Copy, Clone, Debug)]
-    struct LocalVectorTableEntry: u32 {
+    struct LintLocalVectorTableEntry: u32 {
         /// IDT entry that should be triggered for the specific interrupt.
         const INTERRUPT_VECTOR = 0xFF;
-        /// Determines how the APIC should present the interrupt to the processor (default 0b000, 0b100 if NMI).
+        /// Determines how the APIC should present the interrupt to the processor (000b: Fixed, 010b:
+        /// SMI, 100b: NMI, 111b: ExtINT, the other variants are reserved).
         const DELIVERY_MODE = 0b111 << 8;
-        /// Either physical or logical.
-        const DESTINATION_MODE = 0b1 << 11;
-        /// Whether the interrupt has been served or not (read only).
+        /// Whether the interrupt has been served or not (0: Idle, 1: Send pending) (read only).
         const DELIVERY_STATUS = 0b1 << 12;
         /// 0 is active-high, 1 is active-low.
         const PIN_POLARITY = 0b1 << 13;

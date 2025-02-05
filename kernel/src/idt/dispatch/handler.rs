@@ -1,5 +1,4 @@
 use crate::{assign_isr, idt::descriptor::GateType};
-
 // Interrupt Service Routines
 assign_isr!(
     0, GateType::TrapGate, 0
@@ -27,6 +26,7 @@ assign_isr!(
     28, GateType::TrapGate, 0
     29, GateType::TrapGate, 0, error
     30, GateType::TrapGate, 0, error
-    0x20, GateType::InterruptGate, 0 // pit interrupts
+    0x20 , GateType::InterruptGate, 0 // lapic timer interrupt
     0x21, GateType::InterruptGate, 0 // keyboard interrupts
+    0x22, GateType::InterruptGate, 0 // pit interrupts
 );
