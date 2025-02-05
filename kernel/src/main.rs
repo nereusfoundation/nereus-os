@@ -19,6 +19,7 @@ use memory::vmm::{self, paging::PTM};
 extern crate alloc;
 
 mod acpi;
+mod drivers;
 mod gdt;
 mod graphics;
 mod idt;

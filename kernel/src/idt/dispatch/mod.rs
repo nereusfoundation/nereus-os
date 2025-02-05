@@ -5,7 +5,8 @@ use framebuffer::color::{self, INFO, OK};
 use hal::{cpu_state::CpuState, hlt_loop};
 
 use crate::{
-    io::{apic::lapic, inb, keyboard::KEYBOARD},
+    drivers::keyboard::KEYBOARD,
+    io::{apic::lapic, inb},
     loginfo, pit, print, println,
 };
 

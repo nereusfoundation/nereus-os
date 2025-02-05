@@ -1,7 +1,6 @@
 use core::arch::asm;
 
 pub(crate) mod apic;
-pub(crate) mod keyboard;
 pub(crate) mod pic;
 pub(crate) mod timer;
 
