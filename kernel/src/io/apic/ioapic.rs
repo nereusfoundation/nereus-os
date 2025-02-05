@@ -43,7 +43,7 @@ pub(super) fn initialize(io_apics: Vec<IoApic>) -> Result<VirtualAddress, ApicEr
         )
         .map_err(ApicError::from)?;
 
-    Ok(virtual_address)
+    Ok(virtual_address.as_ptr() as u64)
 }
 
 /// Write to the IOAPIC control registers.

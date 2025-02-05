@@ -1,4 +1,7 @@
-use core::{arch::asm, ptr};
+use core::{
+    arch::asm,
+    ptr::{self, NonNull},
+};
 
 use ::bootinfo::BootInfo;
 use hal::registers::msr::{efer::Efer, msr_guard::Msr, ModelSpecificRegister};
@@ -72,10 +75,10 @@ pub(crate) fn initialize_address_space(
         "pml4 pointer is not aligned"
     );
 
-    let pml4 = pml4_addr as *mut PageTable;
+    let mut pml4 = NonNull::new(pml4_addr as *mut PageTable).unwrap();
 
     // zero out new table
-    unsafe { ptr::write_bytes(pml4, 0, 1) };
+    unsafe { ptr::write_bytes(pml4.as_mut(), 0, 1) };
 
     let mut manager = PageTableManager::new(pml4, pmm, nx);
 

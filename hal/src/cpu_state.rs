@@ -28,3 +28,40 @@ pub struct CpuState {
     pub iretq_rsp: u64,
     pub iretq_ss: u64,
 }
+
+impl CpuState {
+    /// Creates a new CPU context.
+    pub fn new(
+        iretq_ss: u64,
+        iretq_rsp: u64,
+        iretq_flags: RFlags,
+        iretq_cs: u64,
+        iretq_rip: u64,
+        rbp: u64,
+    ) -> CpuState {
+        Self {
+            r15: 0,
+            r14: 0,
+            r13: 0,
+            r12: 0,
+            r11: 0,
+            r10: 0,
+            r9: 0,
+            r8: 0,
+            rbp,
+            rdi: 0,
+            rsi: 0,
+            rdx: 0,
+            rcx: 0,
+            rbx: 0,
+            rax: 0,
+            vector_number: 0,
+            error_code: 0,
+            iretq_rip,
+            iretq_cs,
+            iretq_flags,
+            iretq_rsp,
+            iretq_ss,
+        }
+    }
+}

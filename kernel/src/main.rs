@@ -25,6 +25,7 @@ mod graphics;
 mod idt;
 mod io;
 mod memory;
+mod scheduling;
 mod serial;
 
 #[no_mangle]

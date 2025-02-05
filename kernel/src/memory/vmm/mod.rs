@@ -77,7 +77,7 @@ impl VirtualMemoryManager {
         length: usize,
         flags: VmFlags,
         allocation_type: AllocationType,
-    ) -> Result<VirtualAddress, VmmError> {
+    ) -> Result<NonNull<u8>, VmmError> {
         // align length to next valid page size
         let length = align_up(length as u64, PAGE_SIZE) as usize;
         let mut base = 0;
@@ -175,7 +175,7 @@ impl VirtualMemoryManager {
             }
         }
 
-        Ok(self.vmm_start + base)
+        Ok(unsafe { NonNull::new_unchecked((self.vmm_start + base) as *mut u8) })
     }
 
     /// Frees an allocated VMM-object.

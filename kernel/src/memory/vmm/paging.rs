@@ -79,7 +79,7 @@ pub(crate) fn remap_framebuffer() -> Result<(), VmmError> {
     });
 
     unsafe {
-        logger.framebuffer().update_ptr(address as *mut u8);
+        logger.framebuffer().update_ptr(address.as_ptr());
     }
 
     Ok(())

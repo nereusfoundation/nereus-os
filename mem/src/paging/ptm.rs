@@ -1,4 +1,4 @@
-use core::arch::asm;
+use core::{arch::asm, ptr::NonNull};
 
 use crate::{
     bitmap_allocator::BitMapAllocator, error::FrameAllocatorError, PhysicalAddress, VirtualAddress,
@@ -16,7 +16,7 @@ pub struct PageTableManager {
 impl PageTableManager {
     /// Create a new page table manager instance. By default, a virtual `offset` of 0 is used. This can be changed manually using [`PageTableManager::update_offset()`].
     pub fn new(
-        pml4: *mut PageTable,
+        pml4: NonNull<PageTable>,
         frame_allocator: BitMapAllocator,
         nx: bool,
     ) -> PageTableManager {
@@ -75,7 +75,7 @@ impl PageTableManager {
 #[derive(Debug)]
 pub struct PageTableMappings {
     /// Virtual address of level 4 page table
-    pml4: *mut PageTable,
+    pml4: NonNull<PageTable>,
     /// Offset used to access page tables after enabling new paging scheme. Defaults to 0.
     offset: VirtualAddress,
     /// Whether to map certain pages as non-executable
@@ -83,7 +83,7 @@ pub struct PageTableMappings {
 }
 
 impl PageTableMappings {
-    pub fn new(pml4: *mut PageTable, nx: bool) -> PageTableMappings {
+    pub fn new(pml4: NonNull<PageTable>, nx: bool) -> PageTableMappings {
         PageTableMappings {
             pml4,
             offset: 0,
@@ -93,12 +93,17 @@ impl PageTableMappings {
 }
 
 impl PageTableMappings {
-    pub fn pml4_physical(&self) -> *mut PageTable {
+    pub fn pml4_physical(&self) -> NonNull<PageTable> {
         self.pml4
     }
 
-    pub fn pml4_virtual(&self) -> *mut PageTable {
-        (self.pml4 as VirtualAddress + self.offset) as *mut PageTable
+    pub fn pml4_virtual(&self) -> NonNull<PageTable> {
+        unsafe {
+            self.pml4
+                .cast::<u8>()
+                .add(self.offset as usize)
+                .cast::<PageTable>()
+        }
     }
 
     pub fn offset(&self) -> VirtualAddress {
@@ -133,10 +138,10 @@ impl PageTableMappings {
         let page_map_level2 =
             self.get_or_create_next_table(page_map_level3, indexer.pd_i(), pmm, user)?;
         // Map Level 1
-        let page_map_level1 =
+        let mut page_map_level1 =
             self.get_or_create_next_table(page_map_level2, indexer.pt_i(), pmm, user)?;
 
-        let page_entry = &mut unsafe { &mut *page_map_level1 }.entries[indexer.p_i() as usize];
+        let page_entry = &mut unsafe { page_map_level1.as_mut() }.entries[indexer.p_i() as usize];
 
         page_entry.set_address(physical_address);
         page_entry.set_flags(flags);
@@ -153,9 +158,9 @@ impl PageTableMappings {
         // Map Level 2
         let page_map_level2 = self.get_next_table(page_map_level3, indexer.pd_i())?;
         // Map Level 1
-        let page_map_level1 = self.get_next_table(page_map_level2, indexer.pt_i())?;
+        let mut page_map_level1 = self.get_next_table(page_map_level2, indexer.pt_i())?;
 
-        let page_entry = &mut unsafe { &mut *page_map_level1 }.entries[indexer.p_i() as usize];
+        let page_entry = &mut unsafe { page_map_level1.as_mut() }.entries[indexer.p_i() as usize];
         let physical_address = page_entry.address();
 
         page_entry.set_address(0);
@@ -177,11 +182,30 @@ impl PageTableMappings {
         }
     }
 
+    /// Copies the page tables from the current mappings to the destination instance.
+    pub fn copy(&self, other: &mut PageTableMappings) {
+        unsafe {
+            other
+                .pml4_virtual()
+                .as_mut()
+                .entries
+                .copy_from_slice(self.pml4_virtual().as_ref().entries.as_slice());
+        }
+    }
+
     /// Attempt the get the next table
-    fn get_next_table(&self, current_table: *mut PageTable, index: u64) -> Option<*mut PageTable> {
-        let entry = &mut unsafe { &mut *current_table }.entries[index as usize];
+    fn get_next_table(
+        &self,
+        mut current_table: NonNull<PageTable>,
+        index: u64,
+    ) -> Option<NonNull<PageTable>> {
+        let entry = &mut unsafe { current_table.as_mut() }.entries[index as usize];
         if entry.flags().contains(PageEntryFlags::PRESENT) {
-            Some((entry.address() + self.offset) as *mut PageTable)
+            unsafe {
+                Some(NonNull::new_unchecked(
+                    (entry.address() + self.offset) as *mut PageTable,
+                ))
+            }
         } else {
             None
         }
@@ -190,12 +214,12 @@ impl PageTableMappings {
     /// Get a pointer to next table or create it if it does not exist yet.
     fn get_or_create_next_table(
         &mut self,
-        current_table: *mut PageTable,
+        mut current_table: NonNull<PageTable>,
         index: u64,
         pmm: &mut BitMapAllocator,
         user: bool,
-    ) -> Result<*mut PageTable, FrameAllocatorError> {
-        let entry = &mut unsafe { &mut *current_table }.entries[index as usize];
+    ) -> Result<NonNull<PageTable>, FrameAllocatorError> {
+        let entry = &mut unsafe { current_table.as_mut() }.entries[index as usize];
 
         if entry.flags().contains(PageEntryFlags::PRESENT) {
             // path to entry user accessible as well
@@ -203,7 +227,11 @@ impl PageTableMappings {
                 entry.set_flags(entry.flags() | PageEntryFlags::USER_SUPER);
             }
 
-            Ok((entry.address() + self.offset) as *mut PageTable)
+            Ok(
+                unsafe {
+                    NonNull::new_unchecked((entry.address() + self.offset) as *mut PageTable)
+                },
+            )
         } else {
             let new_page = pmm.request_page()?;
             let new_table = (new_page + self.offset) as *mut PageTable;
@@ -223,7 +251,7 @@ impl PageTableMappings {
                     },
             );
 
-            Ok(new_table)
+            Ok(unsafe { NonNull::new_unchecked(new_table) })
         }
     }
 }
