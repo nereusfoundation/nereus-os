@@ -1,11 +1,16 @@
 use core::ptr::NonNull;
 
 use alloc::collections::vec_deque::VecDeque;
-use scheduler::{task::Process, Scheduler};
+use mem::{paging::PageTable, PAGE_SIZE};
+use scheduler::{memory::AddressSpace, task::Process, Scheduler};
 
 use crate::{
     gdt::{KERNEL_CS, KERNEL_DS},
-    vmm::{error::VmmError, VMM},
+    vmm::{
+        error::{PagingError, VmmError},
+        object::VmFlags,
+        AllocationType, VMM,
+    },
 };
 
 struct RoundRobin {
@@ -19,19 +24,37 @@ impl Scheduler for RoundRobin {
 
     type SchedulerError = SchedulerError;
 
-    fn create_address_space() -> Result<mem::paging::ptm::PageTableMappings, Self::SchedulerError> {
+    fn create_address_space() -> Result<AddressSpace, Self::SchedulerError> {
         let mut locked = VMM.locked();
-        let _vmm = locked
+        let vmm = locked
             .get_mut()
             .ok_or(VmmError::VmmUnitialized)
             .map_err(SchedulerError::from)?;
-        unimplemented!();
+
+        let pml4 = vmm
+            .alloc(PAGE_SIZE, VmFlags::WRITE, AllocationType::AnyPages)
+            .map_err(SchedulerError::from)?
+            .cast::<PageTable>();
+
+        Ok(AddressSpace::new(pml4, vmm.ptm()))
     }
 
-    fn delete_address_space(
-        mappings: mem::paging::ptm::PageTableMappings,
+    unsafe fn delete_address_space(
+        mut address_space: AddressSpace,
     ) -> Result<(), Self::SchedulerError> {
-        unimplemented!();
+        let mut locked = VMM.locked();
+        let vmm = locked
+            .get_mut()
+            .ok_or(VmmError::VmmUnitialized)
+            .map_err(SchedulerError::from)?;
+
+        unsafe {
+            address_space
+                .clean(vmm.ptm().pmm())
+                .map_err(PagingError::from)
+                .map_err(VmmError::from)
+                .map_err(SchedulerError::from)
+        }
     }
     fn allocate_stack() -> Result<NonNull<u8>, Self::SchedulerError> {
         unimplemented!();

@@ -14,7 +14,7 @@ pub struct PageTableManager {
 }
 
 impl PageTableManager {
-    /// Create a new page table manager instance. By default, a virtual `offset` of 0 is used. This can be changed manually using [`PageTableManager::update_offset()`].
+    /// Create a new page table manager instance. By default, a virtual `offset` of 0 is used. This can be changed manually using [`PageTableMappings::update_offset()`].
     pub fn new(
         pml4: NonNull<PageTable>,
         frame_allocator: BitMapAllocator,
@@ -38,6 +38,10 @@ impl PageTableManager {
         &mut self.mappings
     }
 
+    /// Get an immutable reference to the page table mappings.
+    pub fn mappings_ref(&self) -> &PageTableMappings {
+        &self.mappings
+    }
     /// Get a mutable refernce to the physical frame allocator and page table mappings.
     pub fn inner(&mut self) -> (&mut PageTableMappings, &mut BitMapAllocator) {
         (&mut self.mappings, &mut self.frame_allocator)
@@ -182,14 +186,12 @@ impl PageTableMappings {
         }
     }
 
-    /// Copies the page tables from the current mappings to the destination instance.
+    /// Copies the higher-half page tables from the current mappings to the destination instance.
+    /// The higher-half of the address space is shared between processes. (more info: <https://www.kernel.org/doc/html/v5.8/x86/x86_64/mm.html>)
     pub fn copy(&self, other: &mut PageTableMappings) {
         unsafe {
-            other
-                .pml4_virtual()
-                .as_mut()
-                .entries
-                .copy_from_slice(self.pml4_virtual().as_ref().entries.as_slice());
+            other.pml4_virtual().as_mut().entries[256..]
+                .copy_from_slice(&self.pml4_virtual().as_ref().entries[256..]);
         }
     }
 

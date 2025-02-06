@@ -3,8 +3,9 @@
 use core::ptr::NonNull;
 
 use hal::{cpu_state::CpuState, registers::rflags::RFlags};
-use mem::paging::ptm::PageTableMappings;
+use memory::AddressSpace;
 use task::Process;
+pub mod memory;
 pub mod task;
 
 // note: for now a process is a mix of process and thread, it will be extended later on.
@@ -14,7 +15,7 @@ pub trait Scheduler {
 
     /// Size of the task's state.
     ///
-    /// Note: the stack is used in the beginning to store the initial task `hal::cpu_state::CpuState`. Thus, the available size is smaller.
+    /// Note: the stack is used in the beginning to store the initial task [`hal::cpu_state::CpuState`]. Thus, the available size is smaller.
     const STACK_SIZE: u64;
     const KERNEL_DS: u16;
     const KERNEL_CS: u16;
@@ -27,10 +28,16 @@ pub trait Scheduler {
 
     /// Creates a new virtual address space for a new process. Returning the new
     /// mappings.
-    fn create_address_space() -> Result<PageTableMappings, Self::SchedulerError>;
+    fn create_address_space() -> Result<AddressSpace, Self::SchedulerError>;
 
-    /// Deletes the specified virtual address space
-    fn delete_address_space(mappings: PageTableMappings) -> Result<(), Self::SchedulerError>;
+    /// Deletes the specified virtual address space.
+    ///
+    /// # Safety
+    /// The page mappings of the process are not automatically invalidated. This is only an issue
+    /// if the currently active address space is manipulated.
+    /// [`memory::AddressSpace::clean()`] for more information.
+    unsafe fn delete_address_space(address_space: AddressSpace)
+        -> Result<(), Self::SchedulerError>;
 
     /// Removes a process from the queue of tasks.
     fn remove_process(&mut self, pid: u64) -> Result<Process, Self::SchedulerError>;
@@ -64,7 +71,7 @@ pub trait Scheduler {
     }
 
     /// Deletes an existing process, cleaning up it's memory. The process may still be present in
-    /// the process queue. It's state is changed to `crate::task::ProcessState::Dead`.
+    /// the process queue. It's state is changed to [`crate::task::ProcessState::Dead`].
     fn kill_process(&mut self, pid: u64) -> Result<(), Self::SchedulerError> {
         // remove process from queue
         let process = self.remove_process(pid)?;
@@ -73,7 +80,9 @@ pub trait Scheduler {
         Self::free_stack(process.stack_top)?;
 
         // free mappings
-        Self::delete_address_space(process.mappings)?;
+        unsafe {
+            Self::delete_address_space(process.address_space)?;
+        }
 
         Ok(())
     }
