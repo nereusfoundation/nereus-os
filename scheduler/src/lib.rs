@@ -46,8 +46,7 @@ pub trait Scheduler {
     fn create_process(&mut self, pid: u64, entry: fn()) -> Result<Process, Self::SchedulerError> {
         let mappings = Self::create_address_space()?;
 
-        // copy current RFLAGS. todo: change this to a fixed value.
-        let flags = RFlags::read();
+        let flags = RFlags::RESERVED_1;
 
         let stack_top = Self::allocate_stack()?;
 
@@ -70,8 +69,7 @@ pub trait Scheduler {
         Ok(Process::new(stack, mappings, pid, context))
     }
 
-    /// Deletes an existing process, cleaning up it's memory. The process may still be present in
-    /// the process queue. It's state is changed to [`crate::task::ProcessState::Dead`].
+    /// Deletes an existing process, cleaning up it's memory.
     fn kill_process(&mut self, pid: u64) -> Result<(), Self::SchedulerError> {
         // remove process from queue
         let process = self.remove_process(pid)?;

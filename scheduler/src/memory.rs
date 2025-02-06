@@ -6,7 +6,7 @@ use mem::{
     paging::{
         ptm::{PageTableManager, PageTableMappings},
         PageEntryFlags, PageTable,
-    },
+    }, VirtualAddress,
 };
 
 /// Owns page memory mappings and keeps track of the process' allocated frames. The higher-half of
@@ -25,7 +25,28 @@ impl AddressSpace {
         AddressSpace(mappings)
     }
 
-    /// Frees the lower-half page tables of the mappings.
+    /// Frees the level 4 page table and unmaps it.
+    ///
+    /// # Safety
+    /// This operation may mess with the virtual memory management and must not be called on the
+    /// currently active address space.
+    pub unsafe fn free(self, ptm: &mut PageTableManager) -> Result<(), FrameAllocatorError> {
+        // unmap pml4 in current mapping. 
+
+        // SAFETY: this must NOT be called if the specified address space is active. (todo: add an
+        // active flag to VAS)
+        let address = self.0.pml4_virtual().as_ptr() as VirtualAddress;
+        ptm.mappings().unmap_memory(address).ok_or(FrameAllocatorError::OperationFailed(address))?;
+
+        // free frame
+        ptm.pmm().free_frame(address)
+
+    }
+
+    /// Frees the lower-half page tables of the mappings. 
+    ///
+    /// Note: The PML4 and higher half entries are
+    /// still valid after this operation.
     ///
     /// # Safety
     /// The pages previously mapped to the lower half are no longer accessible after this action.

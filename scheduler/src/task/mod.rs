@@ -11,7 +11,6 @@ pub struct Process {
     pub(crate) pid: u64,
     pub(crate) state: ProcessState,
     pub(crate) context: NonNull<CpuState>,
-    pub(crate) next: Option<NonNull<Process>>,
 }
 
 impl Process {
@@ -28,7 +27,6 @@ impl Process {
             address_space,
             pid,
             state: ProcessState::Ready,
-            next: None,
             context,
         }
     }

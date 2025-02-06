@@ -50,9 +50,17 @@ impl Scheduler for RoundRobin {
         let mut locked = VMM.locked();
         let vmm = vmm!(locked);
 
+        // free all subsequent page tables
         unsafe {
             address_space
                 .clean(vmm.ptm().pmm())
+                .map_err(PagingError::from)
+                .map_err(VmmError::from)
+                .map_err(SchedulerError::from)?;
+
+            // free the pml4 frame
+            address_space
+                .free(vmm.ptm())
                 .map_err(PagingError::from)
                 .map_err(VmmError::from)
                 .map_err(SchedulerError::from)
@@ -72,13 +80,8 @@ impl Scheduler for RoundRobin {
         vmm.free(stack_top.as_ptr() as VirtualAddress)
             .map_err(SchedulerError::from)
     }
-    fn create_process(&mut self, pid: u64, entry: fn()) -> Result<Process, Self::SchedulerError> {
-        unimplemented!();
-    }
+
     fn remove_process(&mut self, pid: u64) -> Result<Process, Self::SchedulerError> {
-        unimplemented!();
-    }
-    fn kill_process(&mut self, pid: u64) -> Result<(), Self::SchedulerError> {
         unimplemented!();
     }
 }
