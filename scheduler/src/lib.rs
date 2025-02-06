@@ -16,7 +16,7 @@ pub trait Scheduler {
     /// Size of the task's state.
     ///
     /// Note: the stack is used in the beginning to store the initial task [`hal::cpu_state::CpuState`]. Thus, the available size is smaller.
-    const STACK_SIZE: u64;
+    const STACK_SIZE: usize;
     const KERNEL_DS: u16;
     const KERNEL_CS: u16;
 

@@ -1,7 +1,7 @@
 use core::ptr::NonNull;
 
 use alloc::collections::vec_deque::VecDeque;
-use mem::{paging::PageTable, PAGE_SIZE};
+use mem::{paging::PageTable, VirtualAddress, PAGE_SIZE};
 use scheduler::{memory::AddressSpace, task::Process, Scheduler};
 
 use crate::{
@@ -13,12 +13,20 @@ use crate::{
     },
 };
 
+macro_rules! vmm {
+    ($locked:expr) => {{
+        $locked
+            .get_mut()
+            .ok_or(VmmError::VmmUnitialized)
+            .map_err(SchedulerError::from)?
+    }};
+}
 struct RoundRobin {
     tasks: VecDeque<Process>,
 }
 
 impl Scheduler for RoundRobin {
-    const STACK_SIZE: u64 = 0x4000;
+    const STACK_SIZE: usize = 0x4000;
     const KERNEL_DS: u16 = KERNEL_DS;
     const KERNEL_CS: u16 = KERNEL_CS;
 
@@ -26,10 +34,7 @@ impl Scheduler for RoundRobin {
 
     fn create_address_space() -> Result<AddressSpace, Self::SchedulerError> {
         let mut locked = VMM.locked();
-        let vmm = locked
-            .get_mut()
-            .ok_or(VmmError::VmmUnitialized)
-            .map_err(SchedulerError::from)?;
+        let vmm = vmm!(locked);
 
         let pml4 = vmm
             .alloc(PAGE_SIZE, VmFlags::WRITE, AllocationType::AnyPages)
@@ -43,10 +48,7 @@ impl Scheduler for RoundRobin {
         mut address_space: AddressSpace,
     ) -> Result<(), Self::SchedulerError> {
         let mut locked = VMM.locked();
-        let vmm = locked
-            .get_mut()
-            .ok_or(VmmError::VmmUnitialized)
-            .map_err(SchedulerError::from)?;
+        let vmm = vmm!(locked);
 
         unsafe {
             address_space
@@ -57,10 +59,18 @@ impl Scheduler for RoundRobin {
         }
     }
     fn allocate_stack() -> Result<NonNull<u8>, Self::SchedulerError> {
-        unimplemented!();
+        let mut locked = VMM.locked();
+        let vmm = vmm!(locked);
+
+        vmm.alloc(Self::STACK_SIZE, VmFlags::WRITE, AllocationType::AnyPages)
+            .map_err(SchedulerError::from)
     }
     fn free_stack(stack_top: NonNull<u8>) -> Result<(), Self::SchedulerError> {
-        unimplemented!();
+        let mut locked = VMM.locked();
+        let vmm = vmm!(locked);
+
+        vmm.free(stack_top.as_ptr() as VirtualAddress)
+            .map_err(SchedulerError::from)
     }
     fn create_process(&mut self, pid: u64, entry: fn()) -> Result<Process, Self::SchedulerError> {
         unimplemented!();
