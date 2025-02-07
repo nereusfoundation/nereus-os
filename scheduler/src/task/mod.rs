@@ -14,8 +14,8 @@ pub struct Process {
 }
 
 impl Process {
-    /// Creates a new process instance with no next node and the
-    /// [`crate::task::ProcessState::Ready`].
+    /// Creates a new process instance with the
+    /// [`crate::task::ProcessState::Ready`] state.
     pub fn new(
         stack: NonNull<u8>,
         address_space: AddressSpace,
@@ -32,10 +32,19 @@ impl Process {
     }
 }
 
+impl Process {
+    pub fn pid(&self) -> u64 {
+        self.pid
+    }
+
+    pub fn state(&self) -> ProcessState {
+        self.state
+    }
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ProcessState {
     Running,
     Ready,
     Done,
-    Dead,
 }

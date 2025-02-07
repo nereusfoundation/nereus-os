@@ -1,19 +1,21 @@
 #![no_std]
 
-use core::ptr::NonNull;
+use core::{cell::RefCell, ptr::NonNull};
 
+use alloc::rc::Rc;
 use hal::{cpu_state::CpuState, registers::rflags::RFlags};
 use memory::AddressSpace;
 use task::Process;
 pub mod memory;
 pub mod task;
 
+extern crate alloc;
 // note: for now a process is a mix of process and thread, it will be extended later on.
 
 pub trait Scheduler {
     type SchedulerError;
 
-    /// Size of the task's state.
+    /// Size of the task's stack.
     ///
     /// Note: the stack is used in the beginning to store the initial task [`hal::cpu_state::CpuState`]. Thus, the available size is smaller.
     const STACK_SIZE: usize;
@@ -36,14 +38,20 @@ pub trait Scheduler {
     /// The page mappings of the process are not automatically invalidated. This is only an issue
     /// if the currently active address space is manipulated.
     /// [`memory::AddressSpace::clean()`] for more information.
-    unsafe fn delete_address_space(address_space: AddressSpace)
-        -> Result<(), Self::SchedulerError>;
+    unsafe fn delete_address_space(
+        address_space: &mut AddressSpace,
+    ) -> Result<(), Self::SchedulerError>;
 
     /// Removes a process from the queue of tasks.
-    fn remove_process(&mut self, pid: u64) -> Result<Process, Self::SchedulerError>;
+    fn remove_process(&mut self, pid: u64) -> Result<Rc<RefCell<Process>>, Self::SchedulerError>;
+
+    /// Adds a process to the queue of tasks.
+    fn add_process(&mut self, process: Process) -> Result<(), Self::SchedulerError>;
 
     /// Creates a new process.
-    fn create_process(&mut self, pid: u64, entry: fn()) -> Result<Process, Self::SchedulerError> {
+    ///
+    /// Note: the process is not automatically added to any queues.
+    fn create_process(pid: u64, entry: fn()) -> Result<Process, Self::SchedulerError> {
         let mappings = Self::create_address_space()?;
 
         let flags = RFlags::RESERVED_1;
@@ -69,19 +77,23 @@ pub trait Scheduler {
         Ok(Process::new(stack, mappings, pid, context))
     }
 
-    /// Deletes an existing process, cleaning up it's memory.
+    /// Deletes an existing process, cleaning up it's memory and removing it from the queue of
+    /// tasks.
     fn kill_process(&mut self, pid: u64) -> Result<(), Self::SchedulerError> {
         // remove process from queue
         let process = self.remove_process(pid)?;
 
         // free stack
-        Self::free_stack(process.stack_top)?;
+        Self::free_stack(process.borrow().stack_top)?;
 
         // free mappings
         unsafe {
-            Self::delete_address_space(process.address_space)?;
+            Self::delete_address_space(&mut process.borrow_mut().address_space)?;
         }
 
         Ok(())
     }
+
+    /// Schedules the next task.
+    fn schedule(context: NonNull<CpuState>) -> NonNull<CpuState>;
 }

@@ -416,6 +416,7 @@ version = "0.1.0"
 dependencies = [
  "hal",
  "mem",
+ "thiserror-no-std",
 ]
 
 [[package]]

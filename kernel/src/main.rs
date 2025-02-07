@@ -117,6 +117,9 @@ pub extern "sysv64" fn _start(bootinfo: &mut BootInfo) -> ! {
     validate!(hal::interrupts::enable(), "Enabling hardware interrupts");
     validate!(result lapict::initialize(), "Initializing LAPIC timer");
     loginfo!("LAPIC timer is callibrated to PIT frequency");
+
+    validate!(result scheduling::initialize(), "Initializing multitasking");
+
     hal::hlt_loop();
 }
 

@@ -6,3 +6,4 @@ edition = "2024"
 [dependencies]
 mem = { path = "../mem" }
 hal = { path = "../hal" }
+thiserror-no-std = "2.0.2"
