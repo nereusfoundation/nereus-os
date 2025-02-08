@@ -3,7 +3,7 @@ use core::{alloc::Layout, ptr::NonNull};
 use alloc::alloc::dealloc;
 use error::{PagingError, VmmError};
 use mem::{
-    heap::align_up,
+    align_up,
     paging::{ptm::PageTableManager, PageEntryFlags},
     VirtualAddress, PAGE_SIZE, VMM_PAGE_COUNT, VMM_VIRTUAL,
 };
@@ -77,7 +77,7 @@ impl VirtualMemoryManager {
         length: usize,
         flags: VmFlags,
         allocation_type: AllocationType,
-    ) -> Result<VirtualAddress, VmmError> {
+    ) -> Result<NonNull<u8>, VmmError> {
         // align length to next valid page size
         let length = align_up(length as u64, PAGE_SIZE) as usize;
         let mut base = 0;
@@ -175,7 +175,7 @@ impl VirtualMemoryManager {
             }
         }
 
-        Ok(self.vmm_start + base)
+        Ok(unsafe { NonNull::new_unchecked((self.vmm_start + base) as *mut u8) })
     }
 
     /// Frees an allocated VMM-object.

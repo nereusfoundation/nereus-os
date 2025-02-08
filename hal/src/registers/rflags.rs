@@ -7,7 +7,7 @@ bitflags! {
     #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
     pub struct RFlags : u64 {
         const CARRY = 1 << 0;
-        // bit 1 reserved and always set to 1 (for EFLAGS)
+        /// bit 1 reserved and always set to 1 (for EFLAGS)
         const RESERVED_1 = 1 << 1;
         const PARITY = 1 << 2;
         // bit 3 reserved

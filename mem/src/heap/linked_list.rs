@@ -1,11 +1,9 @@
 use core::ptr::NonNull;
 
 use crate::{
-    error::HeapError, paging::ptm::PageTableManager, VirtualAddress, KHEAP_PAGE_COUNT_MAX,
-    PAGE_SIZE,
+    align_up, error::HeapError, paging::ptm::PageTableManager, VirtualAddress,
+    KHEAP_PAGE_COUNT_MAX, PAGE_SIZE,
 };
-
-use super::align_up;
 
 #[derive(Debug)]
 pub struct ListNode {

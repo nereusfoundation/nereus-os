@@ -35,7 +35,7 @@ pub(crate) fn initialize(base: PhysicalAddress) -> Result<(), VmmError> {
     let mut locked = VMM.locked();
     let vmm = locked.get_mut().ok_or(VmmError::VmmUnitialized)?;
     // lapic registers are at a boundary of 4KB
-    let virtual_base = vmm.alloc(
+    let lapic_registers = vmm.alloc(
         PAGE_SIZE,
         VmFlags::WRITE | VmFlags::MMIO | VmFlags::NO_CACHE,
         AllocationType::Address(base),
@@ -44,20 +44,20 @@ pub(crate) fn initialize(base: PhysicalAddress) -> Result<(), VmmError> {
     // todo: model the registers as a struct
     unsafe {
         // more info: https://wiki.osdev.org/APIC#Local_APIC_configuration
-        let lapic_registers = virtual_base as *const u8;
-        let spurious_vector_register =
-            lapic_registers.add(SPURIOUS_INTERRUPT_VECTOR_OFFSET) as *mut u32;
+        let spurious_vector_register = lapic_registers
+            .add(SPURIOUS_INTERRUPT_VECTOR_OFFSET)
+            .cast::<u32>();
 
         // spurious vector value of 0xFF and enable apic software
         spurious_vector_register.write_volatile(0xFF | (1 << 8));
 
-        let task_priority_register = lapic_registers.add(TASK_PRIORITY_OFFSET) as *mut u32;
+        let task_priority_register = lapic_registers.add(TASK_PRIORITY_OFFSET).cast::<u32>();
 
         // set priority to 0 so no interrupts are blocked
         task_priority_register.write_volatile(0x0);
     }
 
-    LAPIC.store(virtual_base as *mut u8, Ordering::Relaxed);
+    LAPIC.store(lapic_registers.as_ptr(), Ordering::Relaxed);
 
     Ok(())
 }

@@ -1,13 +1,13 @@
 use core::arch::{asm, naked_asm};
 
 use error::{ErrorCode, PageFaultErrorCode};
-use framebuffer::color::{self, INFO, OK};
+use framebuffer::color;
 use hal::{cpu_state::CpuState, hlt_loop};
 
 use crate::{
     drivers::keyboard::KEYBOARD,
     io::{apic::lapic, inb},
-    loginfo, pit, print, println,
+    loginfo, pit, println,
 };
 
 mod error;
@@ -43,7 +43,6 @@ fn dispatch(state: &CpuState) -> &CpuState {
             hlt_loop();
         }
         32 => {
-            print!(OK, ".");
             lapic::eoi()
                 .expect("LAPIC must have been initialized before enabling hardware interrupts!");
         }
@@ -56,7 +55,6 @@ fn dispatch(state: &CpuState) -> &CpuState {
                 .expect("LAPIC must have been initialized before enabling hardware interrupts!");
         }
         34 => {
-            print!(INFO, ".");
             pit::tick();
             lapic::eoi()
                 .expect("LAPIC must have been initialized before enabling hardware interrupts!");

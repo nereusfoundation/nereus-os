@@ -9,6 +9,7 @@ mem = { path = "../mem", features = ["linked-list"]}
 framebuffer = { path = "../framebuffer" }
 hal = { path = "../hal" }
 sync = { path = "../sync" }
+scheduler = { path = "../scheduler" }
 
 bitflags = "2.6.0"
 paste = "1.0.15"

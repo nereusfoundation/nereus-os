@@ -1,3 +1,7 @@
+#![allow(static_mut_refs)]
+// note: mutation occurs once at at the initialization of the TSS. After that, only the CPU mutates the
+// memory of these stacks during interrupt-handling.
+
 use core::ptr::null;
 
 /// Size of stack that is used when an interrupt occurres and the cpu is not in ring0.
@@ -5,15 +9,16 @@ const KERNEL_INTERRUPT_STACK_SIZE: usize = 0x5000;
 /// 0x9: 64-bit TSS (Available) [System Segment Access Byte](https://wiki.osdev.org/Global_Descriptor_Table)
 pub(super) const TSS_AVAILABLE_FLAGS: u8 = 0x9;
 
-// note: this does not have to be marked as mutable, because the loader maps every kernel elf page
-// with the same flags.
+#[repr(align(16))] // stack pointer must be aligned to 16-bytes
+struct Stack([u8; KERNEL_INTERRUPT_STACK_SIZE]);
+
 /// Stack used for double faults.
-static IST_STACK: [u8; KERNEL_INTERRUPT_STACK_SIZE] = [0; KERNEL_INTERRUPT_STACK_SIZE];
+static mut IST_STACK: Stack = Stack([0; KERNEL_INTERRUPT_STACK_SIZE]);
 
 /// Stack used for mode switches.
-static RSP_STACK: [u8; KERNEL_INTERRUPT_STACK_SIZE] = [0; KERNEL_INTERRUPT_STACK_SIZE];
+static mut RSP_STACK: Stack = Stack([0; KERNEL_INTERRUPT_STACK_SIZE]);
 
-pub(super) static mut TSS: TaskStateSegment = TaskStateSegment::new();
+pub(super) static TSS: TaskStateSegment = TaskStateSegment::new();
 
 #[repr(C, packed(4))]
 #[derive(Debug, Copy, Clone)]
@@ -44,9 +49,9 @@ impl TaskStateSegment {
     /// Creates a new task state segment and with one static stack for double faults and one for
     /// mode switched.
     const fn new() -> Self {
-        let rsp0 = unsafe { RSP_STACK.as_ptr().add(KERNEL_INTERRUPT_STACK_SIZE) };
+        let rsp0 = unsafe { RSP_STACK.0.as_ptr().add(KERNEL_INTERRUPT_STACK_SIZE) };
 
-        let ist0 = unsafe { IST_STACK.as_ptr().add(KERNEL_INTERRUPT_STACK_SIZE) };
+        let ist0 = unsafe { IST_STACK.0.as_ptr().add(KERNEL_INTERRUPT_STACK_SIZE) };
 
         Self {
             // effectively disable IO map => no longer used in modern systems.
