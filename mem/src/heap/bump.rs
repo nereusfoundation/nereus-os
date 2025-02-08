@@ -1,6 +1,6 @@
 use core::alloc::Layout;
 
-use crate::{error::HeapError, heap::align_up, VirtualAddress};
+use crate::{align_up, error::HeapError, VirtualAddress};
 
 #[derive(Copy, Clone, Debug)]
 pub struct BumpAllocator {

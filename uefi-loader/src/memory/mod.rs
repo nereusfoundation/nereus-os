@@ -161,11 +161,11 @@ pub(crate) fn initialize_address_space(
     let bootinfo = (PAS_VIRTUAL + bootinfo as u64) as *mut BootInfo;
 
     // update kernel stack
-    let stack = KernelStack {
-        bottom: KERNEL_STACK_VIRTUAL,
-        top: KERNEL_STACK_VIRTUAL + (KERNEL_STACK_SIZE - PAGE_SIZE) as u64,
-        num_pages: old_stack.num_pages,
-    };
+    let stack = KernelStack::new(
+        KERNEL_STACK_VIRTUAL + (KERNEL_STACK_SIZE - PAGE_SIZE) as u64,
+        KERNEL_STACK_VIRTUAL,
+        old_stack.num_pages(),
+    );
 
     // update ptm
     unsafe {

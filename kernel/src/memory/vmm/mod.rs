@@ -3,7 +3,7 @@ use core::{alloc::Layout, ptr::NonNull};
 use alloc::alloc::dealloc;
 use error::{PagingError, VmmError};
 use mem::{
-    heap::align_up,
+    align_up,
     paging::{ptm::PageTableManager, PageEntryFlags},
     VirtualAddress, PAGE_SIZE, VMM_PAGE_COUNT, VMM_VIRTUAL,
 };

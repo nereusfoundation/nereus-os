@@ -65,6 +65,9 @@ impl Scheduler for PerCoreScheduler {
 
     type SchedulerError = SchedulerError;
 
+    /// Creates a new address space for a task using the global virtual memory maanger.
+    ///
+    /// Note: Memory allocated by the VMM is guaranteed to be page-aligned. [`mem::VMM_VIRTUAL`] and subsequent addresses are multiples of [`mem::PAGE_SIZE`].
     fn create_address_space() -> Result<AddressSpace, Self::SchedulerError> {
         let mut locked = VMM.locked();
         let vmm = vmm!(locked);
@@ -93,6 +96,10 @@ impl Scheduler for PerCoreScheduler {
             address_space.free(vmm.ptm()).map_err(SchedulerError::from)
         }
     }
+
+    /// Allocates a new task stack using the global virtual memory manager.
+    ///
+    /// Note: Memory allocated by the VMM is guaranteeed to be 16-byte-aligned. [`mem::VMM_VIRTUAL`] and subsequent addresses are multiples of 16.
     fn allocate_stack() -> Result<NonNull<u8>, Self::SchedulerError> {
         let mut locked = VMM.locked();
         let vmm = vmm!(locked);
