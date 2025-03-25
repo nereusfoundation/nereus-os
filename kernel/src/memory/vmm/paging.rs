@@ -79,7 +79,7 @@ pub(crate) fn remap_framebuffer() -> Result<(), VmmError> {
     });
 
     unsafe {
-        logger.framebuffer().update_ptr(address as *mut u8);
+        logger.framebuffer().update_ptr(address.as_ptr());
     }
 
     Ok(())
@@ -122,5 +122,18 @@ pub(crate) fn reclaim_acpi_memory(mmap: MemoryMap) -> Result<(), VmmError> {
         ptm.pmm()
             .use_acpi_memory()
             .map_err(|err| VmmError::Paging(err.into()))
+    }
+}
+
+/// Called after all lower-half memory has been reclaimed.
+pub(crate) fn clean_lower_half() -> Result<(), VmmError> {
+    let mut locked = VMM.locked();
+    let vmm = locked.get_mut().ok_or(VmmError::VmmUnitialized)?;
+    let (mappings, pmm) = vmm.ptm().inner();
+    unsafe {
+        mappings
+            .clean(pmm, true)
+            .map_err(PagingError::from)
+            .map_err(VmmError::from)
     }
 }

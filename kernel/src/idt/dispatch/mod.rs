@@ -1,13 +1,14 @@
 use core::arch::{asm, naked_asm};
 
 use error::{ErrorCode, PageFaultErrorCode};
-use framebuffer::color::{self, INFO, OK};
+use framebuffer::color;
 use hal::{cpu_state::CpuState, hlt_loop};
+use scheduler::Scheduler;
 
 use crate::{
     drivers::keyboard::KEYBOARD,
     io::{apic::lapic, inb},
-    loginfo, pit, print, println,
+    loginfo, pit, println, scheduling, serial, serial_println,
 };
 
 mod error;
@@ -32,6 +33,10 @@ fn dispatch(state: &CpuState) -> &CpuState {
                 " [ERROR]: page FAULT, error code: {:?}",
                 PageFaultErrorCode::from_bits_truncate(error_code as u32)
             );
+            serial_println!(
+                " [ERROR]: page FAULT, error code: {:?}",
+                PageFaultErrorCode::from_bits_truncate(error_code as u32)
+            );
             let cr2: u64;
 
             unsafe {
@@ -39,13 +44,14 @@ fn dispatch(state: &CpuState) -> &CpuState {
             }
 
             println!(color::ERROR, " [INFO ]: faulting address: {:#x}", cr2);
-
+            serial_println!(" [INFO]: faulting address: {:#x}", cr2);
             hlt_loop();
         }
         32 => {
-            print!(OK, ".");
+            // SAFETY: hardware interrupts are disabled until after the handler is called.
             lapic::eoi()
                 .expect("LAPIC must have been initialized before enabling hardware interrupts!");
+            return <scheduling::PerCoreScheduler as Scheduler>::run(state);
         }
 
         33 => {
@@ -56,7 +62,6 @@ fn dispatch(state: &CpuState) -> &CpuState {
                 .expect("LAPIC must have been initialized before enabling hardware interrupts!");
         }
         34 => {
-            print!(INFO, ".");
             pit::tick();
             lapic::eoi()
                 .expect("LAPIC must have been initialized before enabling hardware interrupts!");

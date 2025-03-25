@@ -3,11 +3,9 @@ use core::{
     ptr::{self, NonNull},
 };
 use mem::{
+    align_up,
     error::HeapError,
-    heap::{
-        align_up,
-        linked_list::{LinkedListAllocator, ListNode},
-    },
+    heap::linked_list::{LinkedListAllocator, ListNode},
     KHEAP_PAGE_COUNT, KHEAP_VIRTUAL, PAGE_SIZE,
 };
 use sync::locked::Locked;

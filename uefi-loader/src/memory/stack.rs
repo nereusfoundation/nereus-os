@@ -1,4 +1,4 @@
-use mem::{PhysicalAddress, PAGE_SIZE};
+use mem::{align_down, align_up, PhysicalAddress, PAGE_SIZE};
 use uefi::boot::{self, AllocateType};
 
 use super::KERNEL_STACK;
@@ -8,13 +8,13 @@ pub(crate) struct KernelStack {
     /// Starting address of memory allocated for stack
     ///
     /// > since uefi sets up identity-mapped paging, the virtual and physical addresses are equivalent
-    pub(super) bottom: PhysicalAddress,
+    bottom: PhysicalAddress,
     /// Address of stack top
     ///
     /// > since uefi sets up identity-mapped paging, the virtual and physical addresses are equivalent
-    pub(super) top: PhysicalAddress,
+    top: PhysicalAddress,
     /// Number of stack pages
-    pub(super) num_pages: usize,
+    num_pages: usize,
 }
 
 impl KernelStack {
@@ -29,6 +29,21 @@ impl KernelStack {
     }
 }
 
+impl KernelStack {
+    /// Creates a new kernel stack, adhering to the 16-byte alignment rule.
+    pub(crate) fn new(
+        top: PhysicalAddress,
+        bottom: PhysicalAddress,
+        num_pages: usize,
+    ) -> KernelStack {
+        Self {
+            top: align_down(top, 0x10),
+            bottom: align_up(bottom, 0x10),
+            num_pages,
+        }
+    }
+}
+
 /// Allocate kernel stack with the given size in bytes (aligned to upward page-size)
 pub(crate) fn allocate_kernel_stack(bytes: usize) -> Result<KernelStack, uefi::Error> {
     let num_pages = bytes.div_ceil(PAGE_SIZE);
@@ -36,9 +51,5 @@ pub(crate) fn allocate_kernel_stack(bytes: usize) -> Result<KernelStack, uefi::E
         as PhysicalAddress;
     let top = bottom + (PAGE_SIZE * num_pages) as u64;
 
-    Ok(KernelStack {
-        bottom,
-        top,
-        num_pages,
-    })
+    Ok(KernelStack::new(top, bottom, num_pages))
 }

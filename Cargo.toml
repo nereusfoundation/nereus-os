@@ -7,7 +7,8 @@ members = [
 	"fonts",
 	"hal",
 	"mem",
-	"sync"
+	"sync", 
+	"scheduler"
 ]
 
 resolver = "2"

@@ -1,4 +1,7 @@
-use core::{arch::asm, ptr};
+use core::{
+    arch::asm,
+    ptr::{self, NonNull},
+};
 
 use ::bootinfo::BootInfo;
 use hal::registers::msr::{efer::Efer, msr_guard::Msr, ModelSpecificRegister};
@@ -72,10 +75,10 @@ pub(crate) fn initialize_address_space(
         "pml4 pointer is not aligned"
     );
 
-    let pml4 = pml4_addr as *mut PageTable;
+    let mut pml4 = NonNull::new(pml4_addr as *mut PageTable).unwrap();
 
     // zero out new table
-    unsafe { ptr::write_bytes(pml4, 0, 1) };
+    unsafe { ptr::write_bytes(pml4.as_mut(), 0, 1) };
 
     let mut manager = PageTableManager::new(pml4, pmm, nx);
 
@@ -158,16 +161,26 @@ pub(crate) fn initialize_address_space(
     let bootinfo = (PAS_VIRTUAL + bootinfo as u64) as *mut BootInfo;
 
     // update kernel stack
-    let stack = KernelStack {
-        bottom: KERNEL_STACK_VIRTUAL,
-        top: KERNEL_STACK_VIRTUAL + (KERNEL_STACK_SIZE - PAGE_SIZE) as u64,
-        num_pages: old_stack.num_pages,
-    };
+    let stack = KernelStack::new(
+        KERNEL_STACK_VIRTUAL + (KERNEL_STACK_SIZE - PAGE_SIZE) as u64,
+        KERNEL_STACK_VIRTUAL,
+        old_stack.num_pages(),
+    );
 
     // update ptm
     unsafe {
         // offset
         manager.mappings().update_offset(PAS_VIRTUAL);
+
+        let new = manager
+            .mappings_ref()
+            .pml4_physical()
+            .cast::<u8>()
+            .add(PAS_VIRTUAL as usize)
+            .cast::<PageTable>();
+
+        // pml4_offset
+        manager.mappings().update_pml4_virtual(new);
 
         // pmm bit map
         manager.pmm().update_bit_map_ptr(PAS_VIRTUAL);
