@@ -84,7 +84,7 @@ pub extern "sysv64" fn _start(bootinfo: &mut BootInfo) -> ! {
     );
 
     validate!(result
-         memory::vmm::paging::remap_framebuffer(), 
+         memory::vmm::paging::remap_framebuffer(),
          "Remapping framebuffer as MMIO");
 
     let sdt = validate!(result
@@ -106,6 +106,8 @@ pub extern "sysv64" fn _start(bootinfo: &mut BootInfo) -> ! {
 
     validate!(result memory::vmm::paging::reclaim_acpi_memory(bootinfo.mmap), "Reclaiming ACPI memory");
 
+    validate!(result memory::vmm::paging::clean_lower_half(), "Cleaning address space");
+
     validate!(result io::apic::initialize(lapic_regs, overrides, io_apics), "Initializing advanced programmable interrupt controller (APIC)");
 
     validate!(
@@ -118,7 +120,7 @@ pub extern "sysv64" fn _start(bootinfo: &mut BootInfo) -> ! {
     validate!(result lapict::initialize(), "Initializing LAPIC timer");
     loginfo!("LAPIC timer is callibrated to PIT frequency");
 
-    validate!(result scheduling::initialize(), "Initializing multitasking");
+    // validate!(result scheduling::initialize(), "Initializing multitasking");
 
     hal::hlt_loop();
 }

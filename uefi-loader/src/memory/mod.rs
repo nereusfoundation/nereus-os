@@ -172,6 +172,16 @@ pub(crate) fn initialize_address_space(
         // offset
         manager.mappings().update_offset(PAS_VIRTUAL);
 
+        let new = manager
+            .mappings_ref()
+            .pml4_physical()
+            .cast::<u8>()
+            .add(PAS_VIRTUAL as usize)
+            .cast::<PageTable>();
+
+        // pml4_offset
+        manager.mappings().update_pml4_virtual(new);
+
         // pmm bit map
         manager.pmm().update_bit_map_ptr(PAS_VIRTUAL);
 

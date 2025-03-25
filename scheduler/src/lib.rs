@@ -5,7 +5,7 @@ use core::{cell::RefCell, ptr::NonNull};
 use alloc::rc::Rc;
 use hal::{cpu_state::CpuState, registers::rflags::RFlags};
 use memory::AddressSpace;
-use task::Process;
+use task::Task;
 pub mod memory;
 pub mod task;
 
@@ -43,15 +43,15 @@ pub trait Scheduler {
     ) -> Result<(), Self::SchedulerError>;
 
     /// Removes a process from the queue of tasks.
-    fn remove_process(&mut self, pid: u64) -> Result<Rc<RefCell<Process>>, Self::SchedulerError>;
+    fn remove_process(&mut self, pid: u64) -> Result<Rc<RefCell<Task>>, Self::SchedulerError>;
 
     /// Adds a process to the queue of tasks.
-    fn add_process(&mut self, process: Process) -> Result<(), Self::SchedulerError>;
+    fn add_process(&mut self, process: Task) -> Result<(), Self::SchedulerError>;
 
     /// Creates a new process.
     ///
     /// Note: the process is not automatically added to any queues.
-    fn create_process(pid: u64, entry: fn()) -> Result<Process, Self::SchedulerError> {
+    fn create_process(pid: u64, entry: fn()) -> Result<Task, Self::SchedulerError> {
         let mappings = Self::create_address_space()?;
 
         let flags = RFlags::RESERVED_1;
@@ -74,7 +74,7 @@ pub trait Scheduler {
             ));
         }
 
-        Ok(Process::new(stack, mappings, pid, context))
+        Ok(Task::new(stack, mappings, pid, context))
     }
 
     /// Deletes an existing process, cleaning up it's memory and removing it from the queue of
@@ -95,5 +95,5 @@ pub trait Scheduler {
     }
 
     /// Schedules the next task.
-    fn schedule(context: NonNull<CpuState>) -> NonNull<CpuState>;
+    fn run(context: &CpuState) -> &CpuState;
 }

@@ -124,3 +124,16 @@ pub(crate) fn reclaim_acpi_memory(mmap: MemoryMap) -> Result<(), VmmError> {
             .map_err(|err| VmmError::Paging(err.into()))
     }
 }
+
+/// Called after all lower-half memory has been reclaimed.
+pub(crate) fn clean_lower_half() -> Result<(), VmmError> {
+    let mut locked = VMM.locked();
+    let vmm = locked.get_mut().ok_or(VmmError::VmmUnitialized)?;
+    let (mappings, pmm) = vmm.ptm().inner();
+    unsafe {
+        mappings
+            .clean(pmm, true)
+            .map_err(PagingError::from)
+            .map_err(VmmError::from)
+    }
+}

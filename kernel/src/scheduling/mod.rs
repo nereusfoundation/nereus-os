@@ -1,21 +1,18 @@
-use alloc::rc::Rc;
+use alloc::{collections::linked_list::LinkedList, rc::Rc};
 use core::{cell::RefCell, ptr::NonNull};
+use error::SchedulerError;
 use hal::{cpu_state::CpuState, hlt_loop};
 use mem::{paging::PageTable, VirtualAddress, PAGE_SIZE};
-use queue::TaskQueue;
-use scheduler::{
-    memory::{AddressSpace, AddressSpaceError},
-    task::Process,
-    Scheduler,
-};
+use scheduler::{memory::AddressSpace, task::Task, Scheduler};
 use sync::locked::Locked;
 
 use crate::{
     gdt::{KERNEL_CS, KERNEL_DS},
+    serial_println,
     vmm::{error::VmmError, object::VmFlags, AllocationType, VMM},
 };
 
-mod queue;
+mod error;
 
 pub(crate) fn initialize() -> Result<(), SchedulerError> {
     SCHEDULER.initialize(PerCoreScheduler::try_new(idle)?);
@@ -23,6 +20,12 @@ pub(crate) fn initialize() -> Result<(), SchedulerError> {
 }
 
 fn idle() {
+    serial_println!("now idle");
+    hlt_loop();
+}
+
+fn test() {
+    serial_println!("now tst");
     hlt_loop();
 }
 
@@ -36,25 +39,30 @@ macro_rules! vmm {
             .map_err(SchedulerError::from)?
     }};
 }
+#[derive(Debug)]
 pub(crate) struct PerCoreScheduler {
-    tasks: TaskQueue,
-    active: Rc<RefCell<Process>>,
-    idle: Rc<RefCell<Process>>,
+    tasks: LinkedList<Rc<RefCell<Task>>>,
+    active: Rc<RefCell<Task>>,
+    idle: Rc<RefCell<Task>>,
     pid_counter: u64,
 }
+
+fn dump(t: &Task) {
+    let mut locked = VMM.locked();
+    let vmm = locked.get_mut().unwrap();
+    serial_println!("current: {:?}", unsafe {
+        vmm.ptm().mappings_ref().pml4_virtual().as_ref().entries
+    });
+
+    serial_println!("task: {:?}", unsafe {
+        t.mappings().pml4_virtual().as_ref().entries
+    });
+}
+
 impl PerCoreScheduler {
     /// Initializes a new scheduler with an idle task.
-    pub(crate) fn try_new(idle: fn()) -> Result<PerCoreScheduler, SchedulerError> {
-        let task = <PerCoreScheduler as Scheduler>::create_process(0, idle)?;
-        let task = Rc::new(RefCell::new(task));
-        let idle = Rc::clone(&task);
-        let active = Rc::clone(&idle);
-        Ok(Self {
-            idle,
-            active,
-            tasks: TaskQueue,
-            pid_counter: 1,
-        })
+    pub(crate) fn try_new(_idle: fn()) -> Result<PerCoreScheduler, SchedulerError> {
+        todo!("create new per core scheduler")
     }
 }
 
@@ -77,7 +85,13 @@ impl Scheduler for PerCoreScheduler {
             .map_err(SchedulerError::from)?
             .cast::<PageTable>();
 
-        Ok(AddressSpace::new(pml4, vmm.ptm()))
+        let pml4_phys = vmm
+            .ptm()
+            .mappings()
+            .get(pml4.as_ptr() as u64)
+            .unwrap()
+            .cast::<PageTable>();
+        Ok(AddressSpace::new(pml4_phys, pml4, vmm.ptm()))
     }
 
     unsafe fn delete_address_space(
@@ -116,30 +130,27 @@ impl Scheduler for PerCoreScheduler {
     }
 
     /// Removes a process from the queue of tasks. This only succeeds if the process has the state
-    /// [`scheduler::task::ProcessState::Done`].
-    fn remove_process(&mut self, _pid: u64) -> Result<Rc<RefCell<Process>>, Self::SchedulerError> {
+    /// [`scheduler::task::TaskState::Done`].
+    fn remove_process(&mut self, _pid: u64) -> Result<Rc<RefCell<Task>>, Self::SchedulerError> {
         unimplemented!();
     }
 
-    fn add_process(&mut self, _process: Process) -> Result<(), Self::SchedulerError> {
+    fn add_process(&mut self, _process: Task) -> Result<(), Self::SchedulerError> {
         unimplemented!();
     }
 
-    fn schedule(context: NonNull<CpuState>) -> NonNull<CpuState> {
+    fn run(context: &CpuState) -> &CpuState {
+        /*
+        // set old address space & task to deactived
+        current_task.pause().expect("scheduler paused - failed");
+        let mut next_task = next_task.borrow_mut();
+        next_task.activate().unwrap();
+        // update VMM
+        unsafe {
+            vmm::update(next_task.mappings()).unwrap();
+        }
+        return unsafe { next_task.context().as_ref() };
+        */
         context
     }
-}
-
-#[derive(Debug, thiserror_no_std::Error)]
-pub(crate) enum SchedulerError {
-    #[error("{0}")]
-    Vmm(#[from] VmmError),
-    #[error("{0}")]
-    AddressSpace(#[from] AddressSpaceError),
-    #[error("Process not found: PID{0}")]
-    ProcessNotFound(u64),
-    #[error("Process with the same PID{0} is already in the queue.")]
-    DuplicatePid(u64),
-    #[error("Must not remove active task.")]
-    RemoveNoDone,
 }

@@ -4,7 +4,10 @@ use alloc::alloc::dealloc;
 use error::{PagingError, VmmError};
 use mem::{
     align_up,
-    paging::{ptm::PageTableManager, PageEntryFlags},
+    paging::{
+        ptm::{PageTableManager, PageTableMappings},
+        PageEntryFlags,
+    },
     VirtualAddress, PAGE_SIZE, VMM_PAGE_COUNT, VMM_VIRTUAL,
 };
 use object::{VmFlags, VmObject};
@@ -22,7 +25,7 @@ pub(crate) static VMM: Locked<VirtualMemoryManager> = Locked::new();
 /// # Safety
 /// This consumes the global page table manager, it thus cannot be used directly anymore after this
 /// function call.
-pub unsafe fn initialize() -> Result<(), VmmError> {
+pub(crate) unsafe fn initialize() -> Result<(), VmmError> {
     let mut plocked = PTM.locked();
     let ptm = plocked
         .take()
@@ -30,6 +33,17 @@ pub unsafe fn initialize() -> Result<(), VmmError> {
 
     let vlocked = VMM.locked();
     vlocked.get_or_init(|| unsafe { VirtualMemoryManager::new(VMM_VIRTUAL, VMM_PAGE_COUNT, ptm) });
+    Ok(())
+}
+
+/// Updates the page table mappings of the global virtual memory manager.
+///
+/// # Safety
+/// The caller must guarantee that the new mappings are valid.
+pub(crate) unsafe fn update(mappings: PageTableMappings) -> Result<(), VmmError> {
+    let mut locked = VMM.locked();
+    let vmm = locked.get_mut().ok_or(VmmError::VmmUnitialized)?;
+    unsafe { vmm.ptm.update_mappings(mappings) };
     Ok(())
 }
 
