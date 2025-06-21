@@ -2,7 +2,6 @@
 #![no_main]
 #![feature(lazy_get)]
 #![feature(fn_align)]
-#![feature(naked_functions)]
 #![feature(once_cell_get_mut)]
 
 use bootinfo::BootInfo;

@@ -4,36 +4,32 @@ macro_rules! declare_isr {
     ($isr_number:expr) => {
         paste::paste! {
            #[repr(align(16))]
-           #[naked]
+           #[unsafe(naked)]
            extern "C" fn [<isr_stub_ $isr_number>] (){
-               unsafe {
-                   ::core::arch::naked_asm!(
-                       // push dummy error code
-                       "push 0",
-                       // push vector number
-                       "push {isr_number}",
-                       "jmp {interrupt_stub}",
-                       isr_number = const $isr_number,
-                       interrupt_stub = sym $crate::idt::dispatch::interrupt_stub,
-                   );
-               }
+               ::core::arch::naked_asm!(
+                   // push dummy error code
+                   "push 0",
+                   // push vector number
+                   "push {isr_number}",
+                   "jmp {interrupt_stub}",
+                   isr_number = const $isr_number,
+                   interrupt_stub = sym $crate::idt::dispatch::interrupt_stub,
+               );
            }
         }
     };
     (error $isr_number:expr) => {
         paste::paste! {
            #[repr(align(16))]
-           #[naked]
+           #[unsafe(naked)]
            extern "C" fn [<isr_stub_ $isr_number>] (){
-               unsafe {
-                   ::core::arch::naked_asm!(
-                       // push vector number
-                       "push {isr_number}",
-                       "jmp {interrupt_stub}",
-                       isr_number = const $isr_number,
-                       interrupt_stub = sym $crate::idt::dispatch::interrupt_stub,
-                   );
-               }
+               ::core::arch::naked_asm!(
+                   // push vector number
+                   "push {isr_number}",
+                   "jmp {interrupt_stub}",
+                   isr_number = const $isr_number,
+                   interrupt_stub = sym $crate::idt::dispatch::interrupt_stub,
+               );
            }
         }
     };
