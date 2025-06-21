@@ -29,7 +29,7 @@ fn main() {
         ) {
             Ok(_) => println!("build complete."),
             Err(err) => {
-                eprintln!("build failed - error: {}.", err);
+                eprintln!("build failed - error: {err}.");
                 return;
             }
         }
@@ -38,7 +38,7 @@ fn main() {
         RunOption::Usb => match usb::write_img(img, args.usb.unwrap()) {
             Ok(_) => println!("usb ready."),
             Err(err) => {
-                eprintln!("usb formatting failed - error: {}.", err);
+                eprintln!("usb formatting failed - error: {err}.");
                 if let BootUtilityError::Io(io_err) = err {
                     if io_err.kind() == ErrorKind::PermissionDenied {
                         eprintln!("hint: use `sudo -E <cmd>`")
@@ -58,16 +58,16 @@ fn main() {
 
             match qemu.run() {
                 Ok(_) => println!("emulation complete."),
-                Err(err) => eprintln!("emulation failed - error: {}.", err),
+                Err(err) => eprintln!("emulation failed - error: {err}."),
             }
         }
         RunOption::Clippy => match clippy::all(kernel, loader, args.release) {
             Ok(_) => println!("clippy invocation complete."),
-            Err(err) => eprintln!("clippy failed - error: {}.", err),
+            Err(err) => eprintln!("clippy failed - error: {err}."),
         },
         RunOption::Clean => match clean(&img) {
             Ok(_) => println!("cleaning complete."),
-            Err(err) => eprintln!("cleaning failed - error: {}.", err),
+            Err(err) => eprintln!("cleaning failed - error: {err}."),
         },
     }
 }

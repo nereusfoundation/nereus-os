@@ -109,7 +109,7 @@ impl AddressSpace {
     /// The caller must invalidate these entries manually or switch to a new paging scheme.
     pub unsafe fn clean(&mut self, pmm: &mut BitMapAllocator) -> Result<(), AddressSpaceError> {
         if self.state == State::Poisoned {
-            return Err(AddressSpaceError::CleanPoisoned);
+            Err(AddressSpaceError::CleanPoisoned)
         } else {
             // SAFETY: the mapping is NOT invalidated here!
             unsafe { self.mappings.clean(pmm, false) }.map_err(AddressSpaceError::from)

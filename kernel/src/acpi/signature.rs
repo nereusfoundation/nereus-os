@@ -7,14 +7,14 @@ pub(crate) struct Signature<const N: usize>(pub(crate) [u8; N]);
 impl<const N: usize> fmt::Debug for Signature<N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let converted: [char; N] = (*self).into();
-        write!(f, "{:?}", converted)
+        write!(f, "{converted:?}")
     }
 }
 
 impl<const N: usize> fmt::Display for Signature<N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let converted: [char; N] = (*self).into();
-        write!(f, "{:?}", converted)
+        write!(f, "{converted:?}")
     }
 }
 

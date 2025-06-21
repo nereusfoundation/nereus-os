@@ -8,7 +8,7 @@ use scheduler::Scheduler;
 use crate::{
     drivers::keyboard::KEYBOARD,
     io::{apic::lapic, inb},
-    loginfo, pit, println, scheduling, serial, serial_println,
+    loginfo, pit, println, scheduling, serial_println,
 };
 
 mod error;
