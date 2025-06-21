@@ -1,8 +1,8 @@
 use core::ptr::NonNull;
 
 use crate::{
-    align_up, error::HeapError, paging::ptm::PageTableManager, VirtualAddress,
-    KHEAP_PAGE_COUNT_MAX, PAGE_SIZE,
+    KHEAP_PAGE_COUNT_MAX, PAGE_SIZE, VirtualAddress, align_up, error::HeapError,
+    paging::ptm::PageTableManager,
 };
 
 #[derive(Debug)]

@@ -1,13 +1,13 @@
 use core::ptr::NonNull;
 
 use mem::{
+    VirtualAddress,
     bitmap_allocator::BitMapAllocator,
     error::FrameAllocatorError,
     paging::{
-        ptm::{PageTableManager, PageTableMappings},
         PageTable,
+        ptm::{PageTableManager, PageTableMappings},
     },
-    VirtualAddress,
 };
 
 /// Owns page memory mappings and keeps track of the process' allocated frames. The higher-half of

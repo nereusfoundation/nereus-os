@@ -1,10 +1,10 @@
 use core::{arch::asm, ptr::NonNull};
 
 use crate::{
-    bitmap_allocator::BitMapAllocator, error::FrameAllocatorError, PhysicalAddress, VirtualAddress,
+    PhysicalAddress, VirtualAddress, bitmap_allocator::BitMapAllocator, error::FrameAllocatorError,
 };
 
-use super::{index::PageMapIndexer, PageEntryFlags, PageTable};
+use super::{PageEntryFlags, PageTable, index::PageMapIndexer};
 
 /// Manages Page Table Mappings
 #[derive(Debug)]
@@ -68,8 +68,7 @@ impl PageTableManager {
     pub unsafe fn update_mappings(&mut self, mappings: PageTableMappings) {
         self.mappings = mappings;
     }
-
- }
+}
 
 impl PageTableManager {
     /// Map the given virtual address to the physical address
@@ -150,17 +149,20 @@ impl PageTableMappings {
         self.pml4_virtual = pml4_virtual;
     }
 
-       /// Frees the lower-half page tables of the mappings. 
+    /// Frees the lower-half page tables of the mappings.
     ///
     /// Note: The PML4 and higher half entries are
     /// still valid after this operation. Furthermore, invalidating after cleaning does not just
-    /// invalidate the pages that were cleaned, but rather flushes the entire TLB. 
+    /// invalidate the pages that were cleaned, but rather flushes the entire TLB.
     ///
     /// # Safety
     /// The pages previously mapped to the lower half are no longer accessible after this action.
     /// Furthermore, if "invalidated" the mapping is also activated.
-    pub unsafe fn clean(&mut self, pmm: &mut BitMapAllocator, invalidate: bool) -> Result<(), FrameAllocatorError> {
-
+    pub unsafe fn clean(
+        &mut self,
+        pmm: &mut BitMapAllocator,
+        invalidate: bool,
+    ) -> Result<(), FrameAllocatorError> {
         let pml4 = unsafe { self.pml4_virtual().as_mut() };
         let offset = self.offset();
         // iterate over each pml4 entry for the lower half
@@ -191,7 +193,7 @@ impl PageTableMappings {
                             .entries
                             .iter_mut()
                             .filter(|entry| entry.flags().contains(PageEntryFlags::PRESENT))
-                            .try_for_each(|entry|  
+                            .try_for_each(|entry|
                                 // free level 1 table frame
                                 pmm.free_frame(entry.address())
                             )?;
@@ -206,7 +208,7 @@ impl PageTableMappings {
                 // reset page entry
                 entry.set_address(0);
                 entry.set_flags(PageEntryFlags::empty());
-                
+
                 if invalidate {
                     // flush the entire tlb by reloading the c3 register
                     unsafe { core::arch::asm!("mov cr3, {}", in(reg) self.pml4_physical().as_ptr() as usize); }
@@ -216,7 +218,6 @@ impl PageTableMappings {
 
             })
     }
-
 }
 
 impl PageTableMappings {

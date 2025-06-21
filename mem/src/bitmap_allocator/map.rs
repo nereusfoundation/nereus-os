@@ -1,6 +1,6 @@
 use core::slice;
 
-use crate::{error::FrameAllocatorError, PAGE_SIZE};
+use crate::{PAGE_SIZE, error::FrameAllocatorError};
 
 #[repr(transparent)]
 #[derive(Debug)]
