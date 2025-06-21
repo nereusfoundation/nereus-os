@@ -101,7 +101,7 @@ pub enum TaskState {
     Done,
 }
 
-#[derive(Debug, thiserror_no_std::Error)]
+#[derive(Debug, thiserror::Error)]
 pub enum TaskError {
     #[error("Requested operation cannot be performed on a task that has finished already.")]
     Done,

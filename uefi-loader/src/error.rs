@@ -1,6 +1,6 @@
 use framebuffer::error::FrameBufferError;
 
-#[derive(Debug, thiserror_no_std::Error)]
+#[derive(Debug, thiserror::Error)]
 pub(crate) enum FrameBufferErrorExt {
     #[error("FrameBuffer error: {0}")]
     FrameBuffer(#[from] FrameBufferError),
@@ -8,7 +8,7 @@ pub(crate) enum FrameBufferErrorExt {
     Uefi(#[from] uefi::Error),
 }
 
-#[derive(Debug, thiserror_no_std::Error)]
+#[derive(Debug, thiserror::Error)]
 pub(crate) enum PsfParseError {
     #[error("Insufficient font data for PSF header")]
     InsufficientDataForPSFHeader,
@@ -24,7 +24,7 @@ pub(crate) enum PsfParseError {
     File(#[from] FileParseError),
 }
 
-#[derive(Debug, thiserror_no_std::Error)]
+#[derive(Debug, thiserror::Error)]
 pub(crate) enum FileParseError {
     #[error("Uefi error: {0}")]
     Uefi(#[from] uefi::Error),
@@ -34,7 +34,7 @@ pub(crate) enum FileParseError {
     InvalidFile(&'static str),
 }
 
-#[derive(Debug, thiserror_no_std::Error)]
+#[derive(Debug, thiserror::Error)]
 pub(crate) enum ElfParseError {
     #[error("Uefi error: {0}")]
     Uefi(#[from] uefi::Error),
@@ -44,7 +44,7 @@ pub(crate) enum ElfParseError {
     InvalidFormat,
 }
 
-#[derive(Debug, thiserror_no_std::Error)]
+#[derive(Debug, thiserror::Error)]
 pub(crate) enum RsdpError {
     #[error("RSDP table address cannot be found")]
     NotFound,

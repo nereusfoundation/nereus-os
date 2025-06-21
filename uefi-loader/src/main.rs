@@ -176,7 +176,7 @@ fn main() -> Status {
 }
 
 fn drop_boot_services(mut mmap_descriptors: Vec<NereusMemoryDescriptor>) -> NereusMemoryMap {
-    let mmap = unsafe { boot::exit_boot_services(KERNEL_DATA) };
+    let mmap = unsafe { boot::exit_boot_services(Some(KERNEL_DATA)) };
 
     let mut first_addr = u64::MAX;
     let mut first_available_addr = first_addr;

@@ -1,6 +1,6 @@
 use mem::{error::FrameAllocatorError, VirtualAddress};
 
-#[derive(Debug, thiserror_no_std::Error)]
+#[derive(Debug, thiserror::Error)]
 pub(crate) enum VmmError {
     #[error("Paging error: {0}")]
     Paging(#[from] PagingError),
@@ -12,7 +12,7 @@ pub(crate) enum VmmError {
     VmmUnitialized,
 }
 
-#[derive(Debug, thiserror_no_std::Error)]
+#[derive(Debug, thiserror::Error)]
 pub(crate) enum PagingError {
     #[error("Frame Allocator Error: {0}")]
     FrameAllocator(#[from] FrameAllocatorError),

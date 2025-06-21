@@ -14,7 +14,7 @@ use crate::{
     vmm,
 };
 
-#[derive(Debug, thiserror_no_std::Error)]
+#[derive(Debug, thiserror::Error)]
 pub(crate) enum ApicError {
     #[error("The CPUID feature is unavailable to the CPU")]
     CpuidUnavailable,

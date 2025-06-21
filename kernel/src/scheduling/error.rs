@@ -2,7 +2,7 @@ use scheduler::memory::AddressSpaceError;
 
 use crate::vmm::error::VmmError;
 
-#[derive(Debug, thiserror_no_std::Error)]
+#[derive(Debug, thiserror::Error)]
 pub(crate) enum SchedulerError {
     #[error("{0}")]
     Vmm(#[from] VmmError),

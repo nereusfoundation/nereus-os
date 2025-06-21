@@ -105,7 +105,7 @@ unsafe impl GlobalAlloc for HeapWrapper {
     }
 }
 
-#[derive(Debug, thiserror_no_std::Error)]
+#[derive(Debug, thiserror::Error)]
 pub(crate) enum HeapErrorExt {
     #[error("{0}")]
     Heap(#[from] HeapError),

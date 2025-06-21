@@ -22,7 +22,7 @@ bitflags! {
         const APIC_BASE = 0xFFFFFFFFFF << 12;
     }
 }
-#[derive(Debug, thiserror_no_std::Error)]
+#[derive(Debug, thiserror::Error)]
 pub enum ApicError {
     #[error("APIC_BASE register was used, but is not available on this CPU")]
     ApicUnavailable,

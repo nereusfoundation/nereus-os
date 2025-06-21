@@ -1,6 +1,6 @@
 use super::signature::Signature;
 
-#[derive(Debug, thiserror_no_std::Error)]
+#[derive(Debug, thiserror::Error)]
 pub(crate) enum AcpiError {
     #[error("Invalid RSD address")]
     RsdAddress,

@@ -117,7 +117,7 @@ impl AddressSpace {
     }
 }
 
-#[derive(Debug, thiserror_no_std::Error)]
+#[derive(Debug, thiserror::Error)]
 pub enum AddressSpaceError {
     #[error("{0}")]
     FrameAllocator(#[from] FrameAllocatorError),

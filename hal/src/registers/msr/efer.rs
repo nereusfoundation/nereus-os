@@ -32,7 +32,7 @@ bitflags! {
     }
 }
 
-#[derive(Debug, thiserror_no_std::Error)]
+#[derive(Debug, thiserror::Error)]
 pub enum EferError {
     #[error("NXE was specified, but is not available on this CPU")]
     NXEUnavailable,

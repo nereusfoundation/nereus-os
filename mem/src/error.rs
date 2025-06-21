@@ -1,6 +1,6 @@
 use crate::PhysicalAddress;
 
-#[derive(Debug, thiserror_no_std::Error)]
+#[derive(Debug, thiserror::Error)]
 pub enum FrameAllocatorError {
     #[error("Invalid index to bitmap")]
     InvalidBitMapIndex,
@@ -13,7 +13,7 @@ pub enum FrameAllocatorError {
 }
 
 #[cfg(feature = "alloc")]
-#[derive(Debug, thiserror_no_std::Error)]
+#[derive(Debug, thiserror::Error)]
 pub enum HeapError {
     #[error("Out of memory")]
     Oom,

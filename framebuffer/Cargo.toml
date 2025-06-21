@@ -4,6 +4,5 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-thiserror-no-std = "2.0.2"
 fonts = { path = "../fonts" }
-sync = { path = "../sync" }
+thiserror = { version = "2.0.12", default-features = false }
