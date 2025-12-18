@@ -8,11 +8,14 @@ use crate::RunOption;
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None, author)]
 pub(super) struct Args {
-    /// Kernel cargo project directory path
+    /// Cargo project base directory
+    pub base_dir: PathBuf,
+
+    /// Kernel cargo project directory path relative to base
     #[arg(long, default_value = "kernel")]
     pub kernel_dir: PathBuf,
 
-    /// UEFI loader cargo project directory path
+    /// UEFI loader cargo project directory path relative to base
     #[arg(long, default_value = "uefi-loader")]
     pub loader_dir: PathBuf,
 

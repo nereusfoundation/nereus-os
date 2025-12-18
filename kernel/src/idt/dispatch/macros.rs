@@ -3,7 +3,7 @@
 macro_rules! declare_isr {
     ($isr_number:expr) => {
         paste::paste! {
-           #[repr(align(16))]
+           #[rustc_align(16)]
            #[unsafe(naked)]
            extern "C" fn [<isr_stub_ $isr_number>] (){
                ::core::arch::naked_asm!(
@@ -20,7 +20,7 @@ macro_rules! declare_isr {
     };
     (error $isr_number:expr) => {
         paste::paste! {
-           #[repr(align(16))]
+           #[rustc_align(16)]
            #[unsafe(naked)]
            extern "C" fn [<isr_stub_ $isr_number>] (){
                ::core::arch::naked_asm!(

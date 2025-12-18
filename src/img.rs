@@ -34,8 +34,8 @@ fn build(path: PathBuf, release: bool) -> Result<(std::fs::File, u64), BootUtili
         .next()
         .ok_or(BootUtilityError::CannotFindExec)
         .map(PathBuf::from)?;
-    let f = File::open(path).map_err(BootUtilityError::from)?;
-    let size = f.metadata().map_err(BootUtilityError::from)?.size();
+    let f = File::open(path)?;
+    let size = f.metadata()?.size();
     Ok((f, size))
 }
 
@@ -73,16 +73,14 @@ where
 
 /// Builds the boot image.
 pub(super) fn build_img(
+    base: &Path,
     kernel: &Path,
     loader: &Path,
     font: &Path,
     img: &Path,
     release: bool,
 ) -> Result<(), BootUtilityError> {
-    let base: PathBuf = env::var("CARGO_MANIFEST_DIR")
-        .map_err(BootUtilityError::from)?
-        .into();
-
+    println!("{:#?}", env::vars());
     let (kernel_original, kernel_size) = build(base.join(kernel), release)?;
     let (loader_original, loader_size) = build(base.join(loader), release)?;
 
