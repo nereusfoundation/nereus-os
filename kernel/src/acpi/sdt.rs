@@ -1,7 +1,5 @@
 use core::ptr::{self, NonNull};
 
-use crate::loginfo;
-
 use super::{error::AcpiError, signature::Signature, Rsd};
 
 /// Signature of root SystemDescriptorTable for ACPI versions 2.0+

@@ -8,7 +8,6 @@ use bootinfo::BootInfo;
 use core::panic::PanicInfo;
 use framebuffer::color::{self};
 use graphics::LOGGER;
-use hal::hlt_loop;
 use io::{
     apic::lapic,
     timer::{lapict, pit},

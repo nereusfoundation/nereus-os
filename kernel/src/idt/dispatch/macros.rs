@@ -50,7 +50,7 @@ macro_rules! assign_isr {
                     $(
                         self.set_handler(
                             $isr_number,
-                            [<isr_stub_ $isr_number>] as usize as u64,
+                            [<isr_stub_ $isr_number>] as *const () as usize as u64,
                             $ist,
                             0,
                             $gate_type,

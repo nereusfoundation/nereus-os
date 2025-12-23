@@ -1,4 +1,3 @@
-#![feature(vec_into_raw_parts)]
 #![no_main]
 #![no_std]
 
