@@ -5,7 +5,7 @@
       url = "github:numtide/flake-utils";
       inputs.systems.follows = "systems";
     };
-    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
     naersk.url = "github:nix-community/naersk";
     rust-overlay = {
       url = "github:oxalica/rust-overlay";
@@ -34,7 +34,10 @@
           toolchain:
           toolchain.default.override {
             extensions = [ "rust-src" ];
-            targets = [ "x86_64-unknown-linux-gnu" ];
+            targets = [
+              "x86_64-unknown-linux-gnu"
+              "x86_64-unknown-uefi"
+            ];
 
           }
         );
