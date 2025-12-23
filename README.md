@@ -5,9 +5,7 @@ A x86-64 hobby operating system written entirely from scratch in Rust.
 ## Getting Started
 
 ### Prerequisites
-- A computer or virtual machine with UEFI support.
-- A Rust toolchain installed via [rustup](https://rustup.rs/).
-- QEMU (for testing)
+- Nix package manager
 
 ### Cloning the Repository
 
@@ -18,19 +16,30 @@ git clone https://github.com/nereusfoundation/nereus-os.git
 cd nereus-os
 ```
 
-### Running
+The nix flake provides several outputs to run nereusOS.
+The `kernel` and `uefi-loader` can be built using:
+```bash
+nix build .#kernel
+```
+> for loader: .#loader
 
-To change the default configuration, use `-h` for more options.
+### Running
 
 #### QEMU
 
 ```bash
-cargo run -- --release
+nix run .
 ```
 
 #### Real Machine
 
 ```bash
-sudo -E cargo run -- --run-option usb --usb /dev/<device> --release
+nix run .#flash
 ```
 
+## Development
+
+In order to work on the project, the flake provides a dev shell, which can be invoked with:
+```bash
+nix develop
+```

@@ -1,5 +1,7 @@
 use core::ptr::{self, NonNull};
 
+use crate::loginfo;
+
 use super::{error::AcpiError, signature::Signature, Rsd};
 
 /// Signature of root SystemDescriptorTable for ACPI versions 2.0+
@@ -67,7 +69,7 @@ impl Rsdt {
         let base_ptr = unsafe { self.ptr.add(1).cast::<u8>() };
         for i in 0..entries {
             let entry_ptr = unsafe { base_ptr.add(i * ptr_size) };
-            let entry = unsafe { **(entry_ptr.cast::<*const Header>()) };
+            let entry = unsafe { *ptr::read_unaligned(entry_ptr.cast::<*const Header>()) }; // this may be unaligned!
 
             if signature == entry.signature {
                 return unsafe {

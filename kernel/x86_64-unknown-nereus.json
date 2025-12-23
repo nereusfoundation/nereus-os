@@ -19,6 +19,9 @@
   },
   "panic-strategy": "abort",
   "plt-by-default": false,
+  "pre-link-args": {
+    "ld.lld": ["-T./kernel/linker.ld"]
+  },
   "position-independent-executables": false,
   "relro-level": "full",
   "stack-probes": {

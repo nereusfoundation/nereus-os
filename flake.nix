@@ -57,6 +57,7 @@
               "-Z"
               "build-std-features=compiler-builtins-mem"
             ];
+          release = true;
 
           src = lib.fileset.toSource {
             root = ./.;
@@ -76,9 +77,10 @@
           };
 
           strictDeps = true;
+          dontStrip = true; # breaks kernel
           doCheck = false; # can't find crate for `test`
           buildInputs = [ ];
-          additionalCargoLock = "${rustToolchain.passthru.availableComponents.rust-src}/lib/rustlib/src/rust/library/Cargo.lock";
+          additionalCargoLock = "${rustToolchain.passthru.availableComponents.rust-src}/lib/rustlib/src/rust/library/Cargo.lock"; # for building std
         };
 
         kernel = naersk'.buildPackage (
@@ -93,10 +95,24 @@
             CARGO_BUILD_TARGET = "x86_64-unknown-uefi";
           }
         );
+        bootimage = pkgs.callPackage ./nix/img.nix { inherit kernel loader; };
+        qemu = pkgs.callPackage ./nix/qemu.nix { inherit bootimage; };
+        flash = pkgs.callPackage ./nix/flash.nix { inherit bootimage; };
 
       in
       {
-        packages = { inherit kernel loader; };
+        # For `nix build` & `nix run`:
+        packages = {
+          inherit
+            kernel
+            loader
+            bootimage
+            qemu
+            flash
+            ;
+        };
+
+        defaultPackage = qemu;
 
         # For `nix develop`:
         devShell = pkgs.mkShell {
