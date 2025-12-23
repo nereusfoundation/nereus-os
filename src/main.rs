@@ -15,12 +15,14 @@ fn main() {
     let args = Args::parse();
 
     let img = args.img_path;
+    let base = args.base_dir.as_path();
     let kernel = args.kernel_dir.as_path();
     let loader = args.loader_dir.as_path();
 
     if matches!(args.run_option, RunOption::Qemu | RunOption::Usb) {
         println!("building boot img - this may take a while...");
         match build_img(
+            base,
             kernel,
             loader,
             args.font_path.as_path(),

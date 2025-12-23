@@ -12,16 +12,3 @@ members = [
 ]
 
 resolver = "2"
-
-[package]
-name = "nereus-os"
-version = "0.1.0"
-edition = "2021"
-authors = ["Hannah Fluch"]
-
-[dependencies]
-serde_json = "1.0.138"
-thiserror = "2.0.11"
-fscommon = "0.1.1"
-fatfs = { git = "https://github.com/rafalh/rust-fatfs.git", rev = "c4bb76929eb115f228720631b4110f827b998653"}
-clap = { version = "4.5.27", features = ["derive"] }

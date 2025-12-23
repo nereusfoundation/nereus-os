@@ -18,7 +18,7 @@ impl<T> Locked<T> {
         self.inner.lock().get_or_init(|| value);
     }
 
-    pub fn locked(&self) -> Guard<OnceCell<T>> {
+    pub fn locked(&self) -> Guard<'_, OnceCell<T>> {
         self.inner.lock()
     }
 }

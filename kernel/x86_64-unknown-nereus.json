@@ -19,16 +19,16 @@
   },
   "panic-strategy": "abort",
   "plt-by-default": false,
-  "position-independent-executables": false,
   "pre-link-args": {
     "ld.lld": ["-T./kernel/linker.ld"]
   },
+  "position-independent-executables": false,
   "relro-level": "full",
   "stack-probes": {
     "kind": "inline"
   },
   "static-position-independent-executables": true,
   "supported-sanitizers": ["kcfi", "kernel-address"],
-  "target-pointer-width": "64",
+  "target-pointer-width": 64,
   "rustc-abi": "x86-softfloat"
 }
