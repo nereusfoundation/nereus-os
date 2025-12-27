@@ -33,10 +33,7 @@ static SCHEDULER: Locked<PerCoreScheduler> = Locked::new();
 
 macro_rules! vmm {
     ($locked:expr) => {{
-        $locked
-            .get_mut()
-            .ok_or(VmmError::VmmUnitialized)
-            .map_err(SchedulerError::from)?
+        $locked.get_mut().ok_or(VmmError::VmmUnitialized)?
     }};
 }
 #[derive(Debug)]
@@ -81,8 +78,7 @@ impl Scheduler for PerCoreScheduler {
         let vmm = vmm!(locked);
 
         let pml4 = vmm
-            .alloc(PAGE_SIZE, VmFlags::WRITE, AllocationType::AnyPages)
-            .map_err(SchedulerError::from)?
+            .alloc(PAGE_SIZE, VmFlags::WRITE, AllocationType::AnyPages)?
             .cast::<PageTable>();
 
         let pml4_phys = vmm
@@ -102,9 +98,7 @@ impl Scheduler for PerCoreScheduler {
 
         // free all subsequent page tables
         unsafe {
-            address_space
-                .clean(vmm.ptm().pmm())
-                .map_err(SchedulerError::from)?;
+            address_space.clean(vmm.ptm().pmm())?;
 
             // free the pml4 frame
             address_space.free(vmm.ptm()).map_err(SchedulerError::from)

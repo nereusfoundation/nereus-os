@@ -11,8 +11,7 @@ pub(crate) mod elf;
 
 /// Retrieve file data from filesystem of given file name
 pub(crate) fn get_file_data(filename: &'static str) -> Result<Vec<u8>, FileParseError> {
-    let fs: ScopedProtocol<SimpleFileSystem> =
-        boot::get_image_file_system(boot::image_handle()).map_err(FileParseError::from)?;
+    let fs: ScopedProtocol<SimpleFileSystem> = boot::get_image_file_system(boot::image_handle())?;
     let mut fs = FileSystem::new(fs);
 
     let path = CString16::try_from(filename).map_err(|_| FileParseError::InvalidFile(filename))?;

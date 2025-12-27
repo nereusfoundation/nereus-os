@@ -27,21 +27,16 @@ const IOREDTBL_REGISTERS_OFFSET: u8 = 0x10;
 /// Initializes the IO-APICS of the system. Returns the virtual address of the first IO-APIC.
 pub(super) fn initialize(io_apics: Vec<IoApic>) -> Result<VirtualAddress, ApicError> {
     let mut locked = VMM.locked();
-    let vmm = locked
-        .get_mut()
-        .ok_or(VmmError::VmmUnitialized)
-        .map_err(ApicError::from)?;
+    let vmm = locked.get_mut().ok_or(VmmError::VmmUnitialized)?;
     // todo: initialize remaining IO-APICS.
     let io_apic = io_apics.first().ok_or(ApicError::NoIoApic)?;
     let address = io_apic.address();
 
-    let virtual_address = vmm
-        .alloc(
-            PAGE_SIZE,
-            VmFlags::WRITE | VmFlags::MMIO | VmFlags::NO_CACHE,
-            AllocationType::Address(address),
-        )
-        .map_err(ApicError::from)?;
+    let virtual_address = vmm.alloc(
+        PAGE_SIZE,
+        VmFlags::WRITE | VmFlags::MMIO | VmFlags::NO_CACHE,
+        AllocationType::Address(address),
+    )?;
 
     Ok(virtual_address.as_ptr() as u64)
 }

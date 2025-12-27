@@ -25,10 +25,8 @@ pub(crate) const CAPTION: &str = r#"
 
 /// Set up GOP framebuffer
 pub(crate) fn initialize_framebuffer() -> Result<RawFrameBuffer, FrameBufferErrorExt> {
-    let handle =
-        boot::get_handle_for_protocol::<GraphicsOutput>().map_err(FrameBufferErrorExt::from)?;
-    let mut gop = boot::open_protocol_exclusive::<GraphicsOutput>(handle)
-        .map_err(FrameBufferErrorExt::from)?;
+    let handle = boot::get_handle_for_protocol::<GraphicsOutput>()?;
+    let mut gop = boot::open_protocol_exclusive::<GraphicsOutput>(handle)?;
 
     let gop_mode = gop.current_mode_info();
     let gop_fb_size = gop.frame_buffer().size();
@@ -54,7 +52,7 @@ pub(crate) fn initialize_framebuffer() -> Result<RawFrameBuffer, FrameBufferErro
 
 /// Load PSF font into memory
 pub(crate) fn parse_psf_font(fontname: &'static str) -> Result<RawFont, PsfParseError> {
-    let font_data = file::get_file_data(fontname).map_err(PsfParseError::from)?;
+    let font_data = file::get_file_data(fontname)?;
     let font_data_ptr = font_data.as_ptr(); // points to first byte of font data
 
     // check for sufficient font length for psf header
@@ -84,8 +82,7 @@ pub(crate) fn parse_psf_font(fontname: &'static str) -> Result<RawFont, PsfParse
             boot::AllocateType::MaxAddress(PAS_VIRTUAL_MAX),
             PSF_DATA,
             page_count,
-        )
-        .map_err(PsfParseError::from)?;
+        )?;
 
         // copy header data to allocated memory
         unsafe {
@@ -139,8 +136,7 @@ pub(crate) fn parse_psf_font(fontname: &'static str) -> Result<RawFont, PsfParse
             boot::AllocateType::MaxAddress(PAS_VIRTUAL_MAX),
             PSF_DATA,
             page_count,
-        )
-        .map_err(PsfParseError::from)?;
+        )?;
 
         // copy header data to allocated memory
         unsafe {

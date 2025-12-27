@@ -38,9 +38,7 @@ pub(crate) fn enable() -> Result<(), ApicError> {
     // enable apic if it's disabled
     if !apic.contains(Apic::LAPIC_ENABLE) {
         unsafe {
-            apic.union(Apic::LAPIC_ENABLE)
-                .write(msr)
-                .map_err(ApicError::from)?;
+            apic.union(Apic::LAPIC_ENABLE).write(msr)?;
         }
     }
 
@@ -53,7 +51,7 @@ pub(crate) fn initialize(
     overrides: Vec<InterruptSourceOverride>,
     io_apics: Vec<IoApic>,
 ) -> Result<(), ApicError> {
-    lapic::initialize(lapic_address).map_err(ApicError::from)?;
+    lapic::initialize(lapic_address)?;
     let io_apic_virtual_address = ioapic::initialize(io_apics)?;
 
     // configure redirection entires

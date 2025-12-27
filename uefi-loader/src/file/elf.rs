@@ -41,7 +41,7 @@ impl Elf {
     /// Parse elf and allocate memory for it
     pub(crate) fn try_new(data: Vec<u8>) -> Result<Elf, ElfParseError> {
         let data = data.as_slice();
-        let elf = goblin::elf::Elf::parse(data).map_err(ElfParseError::from)?;
+        let elf = goblin::elf::Elf::parse(data)?;
         let mut dest_start = u64::MAX;
         let mut dest_end = 0;
 
@@ -68,8 +68,7 @@ impl Elf {
                 boot::AllocateType::Address(dest_start),
                 KERNEL_CODE,
                 num_pages,
-            )
-            .map_err(ElfParseError::from)?
+            )?
             .as_ptr() as u64
         );
 
