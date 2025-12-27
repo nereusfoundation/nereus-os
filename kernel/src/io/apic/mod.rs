@@ -2,10 +2,7 @@ mod ioapic;
 pub(crate) mod lapic;
 
 use alloc::vec::Vec;
-use hal::{
-    instructions::cpuid::Cpuid,
-    registers::msr::{self, apic::Apic, msr_guard::Msr, ModelSpecificRegister},
-};
+use hal::registers::msr::{self, apic::Apic, msr_guard::Msr, ModelSpecificRegister};
 use ioapic::{KEYBOARD_IRQ, TIMER_IRQ};
 use mem::PhysicalAddress;
 
@@ -16,8 +13,6 @@ use crate::{
 
 #[derive(Debug, thiserror::Error)]
 pub(crate) enum ApicError {
-    #[error("The CPUID feature is unavailable to the CPU")]
-    CpuidUnavailable,
     #[error("The Model-Specific-Register feature is unavailable to the CPU")]
     MsrUnavailable,
     #[error("Error while using IA32_APIC_BASE register: {0}")]
@@ -32,8 +27,7 @@ pub(crate) enum ApicError {
 
 /// Checks whether the APIC is present on the machine. Enabling it if it is disabled
 pub(crate) fn enable() -> Result<(), ApicError> {
-    let cpuid = Cpuid::new().ok_or(ApicError::CpuidUnavailable)?;
-    let msr = Msr::new(cpuid).ok_or(ApicError::MsrUnavailable)?;
+    let msr = Msr::new().ok_or(ApicError::MsrUnavailable)?;
     let apic = unsafe { Apic::read(msr)? };
     // enable apic if it's disabled
     if !apic.contains(Apic::LAPIC_ENABLE) {

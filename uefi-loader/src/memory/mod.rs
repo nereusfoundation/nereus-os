@@ -54,7 +54,7 @@ pub(crate) fn initialize_address_space(
     let mut nx = false;
 
     if let Some(msr) = msr {
-        if Efer::nx_available(msr.get_cpuid()) {
+        if Efer::nx_available() {
             // Safety: We are in privilege level 0.
             if let Ok(mut efer) = unsafe { Efer::read(msr) } {
                 efer.insert(Efer::NXE);

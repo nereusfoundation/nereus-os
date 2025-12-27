@@ -1,19 +1,13 @@
-use core::arch::asm;
-
-use crate::instructions::cpuid::Cpuid;
+use core::arch::{asm, x86_64::__cpuid};
 
 #[derive(Clone, Copy)]
-pub struct Msr(Cpuid);
+pub struct Msr(());
 
 impl Msr {
     /// Returns `Some(Msr)` if CPU supports model specific registers (CPUID.01h:EDX[bit 5]).
-    pub fn new(cpuid: Cpuid) -> Option<Msr> {
-        let available = unsafe { cpuid.get(0x1) }.edx & (1 << 5) != 0;
-        available.then_some(Msr(cpuid))
-    }
-
-    pub fn get_cpuid(self) -> Cpuid {
-        self.0
+    pub fn new() -> Option<Msr> {
+        let available = __cpuid(0x1).edx & (1 << 5) != 0;
+        available.then_some(Msr(()))
     }
 
     /// Reads a 64-bit Model-Specific Register (MSR) at the given `index`.

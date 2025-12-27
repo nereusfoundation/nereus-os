@@ -3,7 +3,6 @@
 use core::arch::asm;
 
 pub mod cpu_state;
-pub mod instructions;
 pub mod interrupts;
 pub mod registers;
 

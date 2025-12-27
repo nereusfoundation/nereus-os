@@ -1,4 +1,4 @@
-use crate::instructions::cpuid::Cpuid;
+use core::arch::x86_64::__cpuid;
 
 use super::{ModelSpecificRegister, Msr};
 use bitflags::bitflags;
@@ -45,7 +45,7 @@ unsafe impl ModelSpecificRegister for Efer {
     type WriteError = EferError;
 
     unsafe fn write(self, msr: Msr) -> Result<(), EferError> {
-        if !self.contains(Efer::NXE) || Self::nx_available(msr.get_cpuid()) {
+        if !self.contains(Efer::NXE) || Self::nx_available() {
             // Safety: Caller guarantees that we are in privilege level 0, Self::MSR_INDEX is a valid index.
             unsafe { msr.write(Self::MSR_INDEX, self.bits()) }
             Ok(())
@@ -56,8 +56,8 @@ unsafe impl ModelSpecificRegister for Efer {
 }
 impl Efer {
     /// Check whether the NX feature is available to the CPU
-    pub fn nx_available(cpuid: Cpuid) -> bool {
-        unsafe { cpuid.get(0x80000001) }.edx & (1 << 20) != 0
+    pub fn nx_available() -> bool {
+        __cpuid(0x80000001).edx & (1 << 20) != 0
     }
 
     /// Write `self` to MSR.

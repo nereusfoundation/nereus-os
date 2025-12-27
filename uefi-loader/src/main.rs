@@ -17,7 +17,7 @@ use graphics::{
     logger::{self, LOGGER},
     parse_psf_font, CAPTION,
 };
-use hal::{instructions::cpuid::Cpuid, registers::msr::msr_guard::Msr};
+use hal::registers::msr::msr_guard::Msr;
 use log::{error, info};
 use mem::{bitmap_allocator::BitMapAllocator, PhysicalAddress, KERNEL_STACK_SIZE, PAGE_SIZE};
 use memory::{
@@ -134,8 +134,7 @@ fn main() -> Status {
             loginfo!("Used memory: {} bytes", pmm.used_memory());
             loginfo!("Reserved memory: {} bytes", pmm.reserved_memory());
 
-            let cpuid = Cpuid::new();
-            let msr = cpuid.and_then(Msr::new);
+            let msr = Msr::new();
             let vas = validate!(
                 memory::initialize_address_space(
                     bootinfo_ptr.as_ptr(),

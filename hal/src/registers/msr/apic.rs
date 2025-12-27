@@ -1,6 +1,6 @@
-use bitflags::bitflags;
+use core::arch::x86_64::__cpuid;
 
-use crate::instructions::cpuid::Cpuid;
+use bitflags::bitflags;
 
 use super::{msr_guard::Msr, ModelSpecificRegister};
 
@@ -41,8 +41,8 @@ unsafe impl ModelSpecificRegister for Apic {
     /// # Safety
     /// Caller must be in privilege level 0. The caller must also guarnatee that the base address field is valid (if provided).
     unsafe fn write(self, msr: Msr) -> Result<(), ApicError> {
-        if Self::available(msr.get_cpuid()) {
-            if self.contains(Apic::X2APIC_ENABLE) && !Self::x2apic_available(msr.get_cpuid()) {
+        if Self::available() {
+            if self.contains(Apic::X2APIC_ENABLE) && !Self::x2apic_available() {
                 return Err(ApicError::X2ApicUnavailable);
             }
 
@@ -55,7 +55,7 @@ unsafe impl ModelSpecificRegister for Apic {
     }
 
     unsafe fn read(msr: Msr) -> Result<Self, ApicError> {
-        if Self::available(msr.get_cpuid()) {
+        if Self::available() {
             Ok(Self::from_bits_truncate(unsafe {
                 msr.read(Self::MSR_INDEX)
             }))
@@ -69,13 +69,13 @@ impl Apic {
     /// Check whether the IA32_APIC_BASE msr is available to the CPU
     ///
     /// **Warning**: On early AMD K5 processors this is used to indicate support for PGE instead.
-    pub fn available(cpuid: Cpuid) -> bool {
-        unsafe { cpuid.get(0x80000001) }.edx & (1 << 9) != 0
+    pub fn available() -> bool {
+        __cpuid(0x80000001).edx & (1 << 9) != 0
     }
 
     /// Check whether the X2APIC feauture is available to the CPU
-    pub fn x2apic_available(cpuid: Cpuid) -> bool {
-        unsafe { cpuid.get(0x80000001) }.ecx & (1 << 21) != 0
+    pub fn x2apic_available() -> bool {
+        __cpuid(0x80000001).ecx & (1 << 21) != 0
     }
 
     /// Extracts physical base address of apic registers.
