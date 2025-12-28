@@ -6,7 +6,7 @@
 pkgs.writeShellApplication {
   name = "nereus-vm";
   runtimeInputs = with pkgs; [
-    qemu
+    qemu_kvm
   ];
 
   text = ''
