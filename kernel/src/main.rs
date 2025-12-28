@@ -1,6 +1,5 @@
 #![no_std]
 #![no_main]
-#![feature(lazy_get)]
 #![feature(fn_align)]
 #![feature(once_cell_get_mut)]
 
