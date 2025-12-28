@@ -50,6 +50,8 @@
           rustc = rustToolchain;
         };
 
+        buildPackage = lib.makeOverridable naersk'.buildPackage;
+
         commonArgs = pname: {
           inherit pname;
           cargoBuildOptions =
@@ -89,13 +91,13 @@
           additionalCargoLock = "${rustToolchain.passthru.availableComponents.rust-src}/lib/rustlib/src/rust/library/Cargo.lock"; # for building std
         };
 
-        kernel = naersk'.buildPackage (
+        kernel = buildPackage (
           (commonArgs "kernel")
           // {
             CARGO_BUILD_TARGET = "${./kernel/x86_64-unknown-nereus.json}";
           }
         );
-        loader = naersk'.buildPackage (
+        loader = buildPackage (
           (commonArgs "uefi-loader")
           // {
             CARGO_BUILD_TARGET = "x86_64-unknown-uefi";
@@ -108,7 +110,16 @@
       in
       {
         # For `nix build` & `nix run`:
+        checks = {
+          "kernel-clippy" = kernel.override { mode = "clippy"; };
+          "loader-clippy" = loader.override { mode = "clippy"; };
+          "kernel-fmt" = kernel.override { mode = "fmt"; };
+          "loader-fmt" = loader.override { mode = "fmt"; };
+        };
+
         packages = {
+          default = qemu;
+
           inherit
             kernel
             loader
@@ -118,10 +129,8 @@
             ;
         };
 
-        defaultPackage = qemu;
-
         # For `nix develop`:
-        devShell = pkgs.mkShell {
+        devShells.default = pkgs.mkShell {
           nativeBuildInputs = [
             rustToolchain
           ];

@@ -1,0 +1,26 @@
+name: nix-check
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  nix-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install nix
+        uses: DeterminateSystems/nix-installer-action@main
+
+      - name: Cache nix store
+        uses: DeterminateSystems/magic-nix-cache-action@main
+
+      - name: Build the bootimage
+        run: nix build .#bootimage
+
+      - name: Check all crates
+        run: nix flake check
+
