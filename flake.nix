@@ -106,6 +106,8 @@
       {
         # For `nix build` & `nix run`:
         packages = {
+          default = qemu;
+
           inherit
             kernel
             loader
@@ -114,8 +116,6 @@
             flash
             ;
         };
-
-        defaultPackage = qemu;
 
         # For `nix develop`:
         devShell = pkgs.mkShell {
