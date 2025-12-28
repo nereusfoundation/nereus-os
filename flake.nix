@@ -6,7 +6,10 @@
       inputs.systems.follows = "systems";
     };
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
-    naersk.url = "github:nix-community/naersk";
+    naersk = {
+      url = "github:nix-community/naersk";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     rust-overlay = {
       url = "github:oxalica/rust-overlay";
       inputs.nixpkgs.follows = "nixpkgs";
