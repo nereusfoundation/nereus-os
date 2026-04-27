@@ -1,9 +1,9 @@
 use core::slice;
 
 use crate::{
+    PAGE_SIZE, PAS_VIRTUAL_MAX, PhysicalAddress,
     error::FrameAllocatorError,
     map::{MemoryDescriptor, MemoryMap, MemoryType},
-    PhysicalAddress, PAGE_SIZE, PAS_VIRTUAL_MAX,
 };
 use map::BitMap;
 
