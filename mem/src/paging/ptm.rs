@@ -85,7 +85,7 @@ impl PageTableManager {
 }
 
 /// Mutable collection of page table entries
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 pub struct PageTableMappings {
     /// Virtual address of level 4 page table
     pml4: NonNull<PageTable>,
@@ -152,9 +152,7 @@ impl PageTableMappings {
 
     /// Frees the lower-half page tables of the mappings.
     ///
-    /// Note: The PML4 and higher half entries are
-    /// still valid after this operation. Furthermore, invalidating after cleaning does not just
-    /// invalidate the pages that were cleaned, but rather flushes the entire TLB.
+    /// Note: The PML4 and higher half entries are still valid after this operation. Furthermore, invalidating after cleaning does not just invalidate the pages that were cleaned, but rather flushes the entire TLB.
     ///
     /// # Safety
     /// The pages previously mapped to the lower half are no longer accessible after this action.

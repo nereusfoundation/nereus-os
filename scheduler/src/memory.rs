@@ -19,6 +19,30 @@ pub struct AddressSpace {
 }
 
 impl AddressSpace {
+    pub fn pml4_virtual_address(&self) -> VirtualAddress {
+        self.mappings.pml4_virtual().as_ptr() as VirtualAddress
+    }
+
+    pub fn set_state(&mut self, state: State) {
+        self.state = state;
+    }
+
+    /// Creates an address space not based on a specific active ptm. State is inactive by default.
+    pub fn new_standalone(
+        pml4_phys: NonNull<PageTable>,
+        pml4_virt: NonNull<PageTable>,
+        nx: bool,
+    ) -> Self {
+        let mut mappings = PageTableMappings::new(pml4_phys, nx);
+        unsafe {
+            mappings.update_pml4_virtual(pml4_virt);
+        }
+        Self {
+            mappings,
+            state: State::Inactive,
+        }
+    }
+
     /// Creates a new private address space. The caller must have allocated a frame for the pml4
     /// page table in advance. The higher-half mappings, as well as the nx-feature and offset are copied from the page table manager. The address space is [`State::Inactive`] per default.
     pub fn new(
@@ -28,13 +52,11 @@ impl AddressSpace {
     ) -> AddressSpace {
         let mut mappings = PageTableMappings::new(pml4_phys, ptm.nx());
 
-        // copy offset
         unsafe {
+            // copy offset
             mappings.update_offset(ptm.mappings_ref().offset());
-        }
 
-        // set pml4 virtual address
-        unsafe {
+            // set pml4 virtual address
             mappings.update_pml4_virtual(pml4_virt);
         }
 
@@ -66,17 +88,21 @@ impl AddressSpace {
             State::Inactive => {
                 // unmap pml4 in current mapping.
 
-                // SAFETY: this must NOT be called if the specified address space is active. (todo: add an
-                // active flag to VAS)
-                let address = self.mappings.pml4_virtual().as_ptr() as VirtualAddress;
+                // SAFETY: this must NOT be called if the specified address space is active.
+                let virtual_address = self.mappings.pml4_virtual().as_ptr() as VirtualAddress;
+                let physical_address = self.mappings.pml4_physical().as_ptr() as VirtualAddress;
                 ptm.mappings()
-                    .unmap_memory(address)
-                    .ok_or(FrameAllocatorError::OperationFailed(address))?;
+                    .unmap_memory(virtual_address)
+                    .ok_or(FrameAllocatorError::OperationFailed(virtual_address))?;
 
-                // free frame
+                // Free the physical frame backing the PML4 itself.
                 ptm.pmm()
-                    .free_frame(address)
-                    .map_err(AddressSpaceError::from)
+                    .free_frame(physical_address)
+                    .map_err(AddressSpaceError::from)?;
+
+                self.state = State::Poisoned;
+
+                Ok(())
             }
             State::Active => Err(AddressSpaceError::FreeActive),
             State::Poisoned => Err(AddressSpaceError::FreePoisoned),

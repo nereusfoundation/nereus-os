@@ -194,7 +194,7 @@ impl VirtualMemoryManager {
 
     /// Frees an allocated VMM-object.
     pub(crate) fn free(&mut self, address: VirtualAddress) -> Result<(), VmmError> {
-        if address >= self.vmm_start {
+        if address < self.vmm_start {
             return Err(VmmError::InvalidRequest(address));
         }
 
@@ -247,7 +247,6 @@ impl VirtualMemoryManager {
                 unsafe {
                     dealloc(heap_ptr as *mut u8, Layout::new::<VmObject>());
                 }
-
                 return Ok(());
             }
 

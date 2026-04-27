@@ -7,24 +7,50 @@ use crate::memory::{AddressSpace, AddressSpaceError, State};
 
 #[derive(Debug)]
 pub struct Task {
-    pub(crate) stack_top: NonNull<u8>,
+    pub(crate) stack: TaskStack,
     pub(crate) address_space: AddressSpace,
     pub(crate) pid: u64,
     pub(crate) state: TaskState,
     pub(crate) context: NonNull<CpuState>,
 }
 
+#[derive(Debug)]
+pub struct TaskStack {
+    pub(crate) top: NonNull<u8>,
+    pub(crate) bottom: NonNull<u8>,
+}
+impl TaskStack {
+    pub fn new(top: NonNull<u8>, bottom: NonNull<u8>) -> Self {
+        Self { top, bottom }
+    }
+
+    pub fn top(&self) -> NonNull<u8> {
+        self.top
+    }
+    pub fn bottom(&self) -> NonNull<u8> {
+        self.bottom
+    }
+
+    /// Effectively "allocates" `size` bytes on the stack.
+    ///
+    /// Note: the "allocation" is force-aligned to 16 bytes.
+    pub fn sub_aligned(&mut self, size: usize) {
+        let rsp = unsafe { self.top.sub(size) };
+        self.top = unsafe { NonNull::new_unchecked(((rsp.as_ptr() as usize) & !0xF) as *mut u8) };
+    }
+}
+
 impl Task {
     /// Creates a new task instance with the
     /// [`crate::task::TaskState::Ready`] state.
     pub fn new(
-        stack: NonNull<u8>,
+        stack: TaskStack,
         address_space: AddressSpace,
         pid: u64,
         context: NonNull<CpuState>,
     ) -> Task {
         Self {
-            stack_top: stack,
+            stack,
             address_space,
             pid,
             state: TaskState::Ready,
@@ -38,6 +64,14 @@ impl Task {
         self.pid
     }
 
+    pub fn stack_bottom(&self) -> NonNull<u8> {
+        self.stack.bottom
+    }
+
+    pub fn address_space_mut(&mut self) -> &mut AddressSpace {
+        &mut self.address_space
+    }
+
     pub fn state(&self) -> TaskState {
         self.state
     }
@@ -48,11 +82,11 @@ impl Task {
 }
 impl Task {
     /// Sets the task state to [`crate::task::TaskState::Ready`] and the address space to
-    /// [`crate::memory::State::Inactive`]. This fails if the current task state is
-    /// [`crate::task::TaskState::Done`] or the VAS is poisoned.
+    /// [`crate::memory::State::Inactive`]. If the task is done, the VAS is just changed to inactive. This fails if the VAS is poisoned.
     pub fn pause(&mut self) -> Result<(), TaskError> {
         if self.state == TaskState::Done {
-            Err(TaskError::Done)
+            self.address_space.state = State::Inactive;
+            Ok(())
         } else if self.address_space.state == State::Poisoned {
             Err(TaskError::VasPoisoned)
         } else {
@@ -88,6 +122,11 @@ impl Task {
     /// Updates the task's context.
     pub fn update(&mut self, new: &CpuState) {
         self.context = NonNull::from_ref(new);
+    }
+
+    /// Updates the task's state.
+    pub fn set_state(&mut self, state: TaskState) {
+        self.state = state;
     }
 }
 
