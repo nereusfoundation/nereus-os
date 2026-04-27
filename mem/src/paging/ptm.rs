@@ -1,11 +1,11 @@
 use core::{arch::asm, ptr::NonNull};
 
 use crate::{
-    PhysicalAddress, VirtualAddress, bitmap_allocator::BitMapAllocator, error::FrameAllocatorError,
-    paging::PageEntry,
+    bitmap_allocator::BitMapAllocator, error::FrameAllocatorError, paging::PageEntry,
+    PhysicalAddress, VirtualAddress,
 };
 
-use super::{PageEntryFlags, PageTable, index::PageMapIndexer};
+use super::{index::PageMapIndexer, PageEntryFlags, PageTable};
 
 /// Manages Page Table Mappings
 #[derive(Debug)]
@@ -152,9 +152,7 @@ impl PageTableMappings {
 
     /// Frees the lower-half page tables of the mappings.
     ///
-    /// Note: The PML4 and higher half entries are
-    /// still valid after this operation. Furthermore, invalidating after cleaning does not just
-    /// invalidate the pages that were cleaned, but rather flushes the entire TLB.
+    /// Note: The PML4 and higher half entries are still valid after this operation. Furthermore, invalidating after cleaning does not just invalidate the pages that were cleaned, but rather flushes the entire TLB.
     ///
     /// # Safety
     /// The pages previously mapped to the lower half are no longer accessible after this action.

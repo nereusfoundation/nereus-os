@@ -1,12 +1,15 @@
 use alloc::collections::vec_deque::VecDeque;
-use core::ptr::NonNull;
+use core::{arch::asm, fmt::Debug, ptr::NonNull};
 use error::SchedulerError;
 use framebuffer::color;
-use hal::cpu_state::CpuState;
-use mem::{paging::PageTable, VirtualAddress, PAGE_SIZE};
+use hal::{cpu_state::CpuState, hlt_loop, interrupts::without_interrupts};
+use mem::{
+    paging::{ptm::PageTableMappings, PageTable},
+    VirtualAddress, PAGE_SIZE,
+};
 use scheduler::{
     memory::AddressSpace,
-    task::{Task, TaskState},
+    task::{Task, TaskStack, TaskState},
     Scheduler,
 };
 use sync::locked::Locked;
@@ -15,7 +18,7 @@ use crate::{
     gdt::{KERNEL_CS, KERNEL_DS},
     loginfo,
     memory::vmm,
-    print,
+    print, serial_println,
     vmm::{error::VmmError, object::VmFlags, AllocationType, VMM},
 };
 
@@ -26,22 +29,48 @@ pub(crate) fn initialize() -> Result<(), SchedulerError> {
     Ok(())
 }
 
+/// Cleanup function called after a task finishes.
+fn exit() -> ! {
+    // update task state
+    without_interrupts(|| {
+        let mut locked = SCHEDULER.locked();
+
+        let Some(scheduler) = locked.get_mut() else {
+            unreachable!();
+        };
+
+        let task = scheduler
+            .ready_tasks
+            .iter_mut()
+            .find(|x| x.pid() == scheduler.active_pid)
+            .unwrap();
+
+        task.set_state(TaskState::Done);
+    });
+
+    // send interrupt to trigger scheduler
+    unsafe {
+        asm!("int 32");
+    }
+
+    hlt_loop();
+}
+
 fn idle() {
     loginfo!("now idle");
-    loop {
-        print!(color::INFO, "A");
-    }
+    serial_println!("idle");
+    hlt_loop();
 }
 
 fn test() {
     loginfo!("now test");
-    loop {
-        print!(color::INFO, "C");
-    }
+    serial_println!("test");
+    exit();
 }
 
 fn init() {
     loginfo!("now init");
+    serial_println!("init");
 
     // add new process
     {
@@ -50,9 +79,7 @@ fn init() {
         sched.insert_process(test).unwrap();
     }
 
-    loop {
-        print!(color::INFO, "B");
-    }
+    hlt_loop();
 }
 
 static SCHEDULER: Locked<PerCoreScheduler> = Locked::new();
@@ -144,19 +171,22 @@ impl Scheduler for PerCoreScheduler {
     /// Allocates a new task stack using the global virtual memory manager.
     ///
     /// Note: Memory allocated by the VMM is guaranteeed to be 16-byte-aligned. [`mem::VMM_VIRTUAL`] and subsequent addresses are multiples of 16.
-    fn allocate_stack() -> Result<NonNull<u8>, Self::SchedulerError> {
+    fn allocate_stack() -> Result<TaskStack, Self::SchedulerError> {
         let mut locked = VMM.locked();
         let vmm = vmm!(locked);
 
-        vmm.alloc(Self::STACK_SIZE, VmFlags::WRITE, AllocationType::AnyPages)
-            .map_err(SchedulerError::from)
-            .map(|p| unsafe { p.add(Self::STACK_SIZE) })
+        let btm = vmm
+            .alloc(Self::STACK_SIZE, VmFlags::WRITE, AllocationType::AnyPages)
+            .map_err(SchedulerError::from)?;
+        Ok(TaskStack::new(unsafe { btm.add(Self::STACK_SIZE) }, btm))
     }
-    fn free_stack(stack_top: NonNull<u8>) -> Result<(), Self::SchedulerError> {
+
+    fn free_stack(stack_bottom: NonNull<u8>) -> Result<(), Self::SchedulerError> {
+        serial_println!("freeing stack");
         let mut locked = VMM.locked();
         let vmm = vmm!(locked);
 
-        vmm.free(stack_top.as_ptr() as VirtualAddress)
+        vmm.free(stack_bottom.as_ptr() as VirtualAddress)
             .map_err(SchedulerError::from)
     }
 
@@ -193,18 +223,41 @@ impl Scheduler for PerCoreScheduler {
                 .iter_mut()
                 .find(|x| x.pid() == current_task_pid)
                 .expect("active task must be part of task queue.");
+
             match current_task.state() {
                 TaskState::Ready => {
+                    // will be freed
+                    let mut pre_mappings = {
+                        let mut locked = VMM.locked();
+                        let vmm = locked.get_mut().unwrap();
+                        let ptm = vmm.ptm().mappings_ref();
+                        let pml4 = ptm.pml4_virtual();
+                        let pml4_phys = ptm.pml4_physical();
+
+                        AddressSpace::new_standalone(pml4_phys, pml4, ptm.nx())
+                    };
+
+                    unsafe {
+                        PerCoreScheduler::delete_address_space(&mut pre_mappings);
+                    }
                     // first time a task is scheduled
                     PerCoreScheduler::activate_task(current_task);
+
+                    serial_println!("i deleted pre-mt stuff");
+
+                    // free pre-mappings
                     return unsafe { current_task.context().as_ref() };
                 }
                 TaskState::Done => {
+                    serial_println!("current task is done! (id: {})", current_task_pid);
                     assert_ne!(current_task_pid, scheduler.idle_pid);
+                    current_task.pause().expect("scheduler paused - failed");
+
                     // remove finsihed task
                     scheduler.kill_process(current_task_pid).unwrap();
                 }
                 TaskState::Running => {
+                    serial_println!("switch");
                     // set old address space & task to deactived
                     current_task.pause().expect("scheduler paused - failed");
                     current_task.update(context); // update state to current one

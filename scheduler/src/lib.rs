@@ -1,10 +1,13 @@
 #![no_std]
+#![feature(pointer_is_aligned_to)]
 
 use core::ptr::NonNull;
 
 use hal::{cpu_state::CpuState, registers::rflags::RFlags};
 use memory::AddressSpace;
 use task::Task;
+
+use crate::task::TaskStack;
 pub mod memory;
 pub mod task;
 
@@ -21,11 +24,11 @@ pub trait Scheduler {
     const KERNEL_DS: u16;
     const KERNEL_CS: u16;
 
-    /// Allocates the stack for a new thread. Returning the address of the stack top.
-    fn allocate_stack() -> Result<NonNull<u8>, Self::SchedulerError>;
+    /// Allocates the stack for a new thread. Returning the address of the stack top and the stack bottom (in that order).
+    fn allocate_stack() -> Result<TaskStack, Self::SchedulerError>;
 
     /// Frees the stack starting at the specified address.
-    fn free_stack(stack_top: NonNull<u8>) -> Result<(), Self::SchedulerError>;
+    fn free_stack(stack_bottom: NonNull<u8>) -> Result<(), Self::SchedulerError>;
 
     /// Creates a new virtual address space for a new process. Returning the new
     /// mappings.
@@ -50,12 +53,13 @@ pub trait Scheduler {
     ///
     /// Note: the process is not automatically added to any queues. See [`Scheduler::insert_process()`] as an alternative.
     fn create_process(pid: u64, entry: fn()) -> Result<Task, Self::SchedulerError> {
-        let stack_top = Self::allocate_stack()?;
+        let mut stack = Self::allocate_stack()?;
 
         // put inital cpu sate onto stack
-        let stack = unsafe { stack_top.sub(size_of::<CpuState>()) };
+        stack.sub_aligned(size_of::<CpuState>());
+        assert!(stack.top.is_aligned_to(16));
 
-        let context = stack.cast::<CpuState>();
+        let context = stack.top.cast::<CpuState>();
 
         let mappings = Self::create_address_space()?;
 
@@ -64,7 +68,7 @@ pub trait Scheduler {
         unsafe {
             context.write(CpuState::new(
                 Self::KERNEL_DS.into(),
-                stack.as_ptr() as u64,
+                stack.top.as_ptr() as u64,
                 flags,
                 Self::KERNEL_CS.into(),
                 entry as usize as u64,
@@ -85,8 +89,9 @@ pub trait Scheduler {
         let mut process = self.remove_process(pid);
 
         // free stack
-        Self::free_stack(process.stack_top)?;
+        Self::free_stack(process.stack.bottom)?;
 
+        unimplemented!("need to switch to global mappings");
         // free mappings
         unsafe {
             Self::delete_address_space(&mut process.address_space)?;
