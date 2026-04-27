@@ -85,7 +85,7 @@ impl PageTableManager {
 }
 
 /// Mutable collection of page table entries
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 pub struct PageTableMappings {
     /// Virtual address of level 4 page table
     pml4: NonNull<PageTable>,

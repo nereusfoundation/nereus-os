@@ -14,8 +14,6 @@ use object::{VmFlags, VmObject};
 use paging::PTM;
 use sync::locked::Locked;
 
-use crate::serial_println;
-
 pub(crate) mod error;
 pub(crate) mod object;
 pub(crate) mod paging;

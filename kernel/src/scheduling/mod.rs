@@ -1,7 +1,6 @@
 use alloc::collections::vec_deque::VecDeque;
 use core::{arch::asm, fmt::Debug, ptr::NonNull};
 use error::SchedulerError;
-use framebuffer::color;
 use hal::{cpu_state::CpuState, hlt_loop, interrupts::without_interrupts};
 use mem::{
     paging::{ptm::PageTableMappings, PageTable},
@@ -18,7 +17,7 @@ use crate::{
     gdt::{KERNEL_CS, KERNEL_DS},
     loginfo,
     memory::vmm,
-    print, serial_println,
+    serial_println,
     vmm::{error::VmmError, object::VmFlags, AllocationType, VMM},
 };
 
@@ -92,14 +91,22 @@ macro_rules! vmm {
 #[derive(Debug)]
 pub(crate) struct PerCoreScheduler {
     ready_tasks: VecDeque<Task>,
+    pending_cleanup: Option<Task>,
     active_pid: u64,
     idle_pid: u64,
     pid_counter: u64,
+    global_mappings: PageTableMappings,
 }
 
 impl PerCoreScheduler {
     /// Initializes a new scheduler with an init and an idle task.
     pub(crate) fn try_new(init: fn(), idle: fn()) -> Result<PerCoreScheduler, SchedulerError> {
+        let global_mappings = {
+            let mut locked = VMM.locked();
+            let vmm = vmm!(locked);
+            *vmm.ptm().mappings_ref()
+        };
+
         let idle = PerCoreScheduler::create_process(0, idle)?;
         let init = PerCoreScheduler::create_process(1, init)?;
         let idle_pid = idle.pid();
@@ -112,17 +119,37 @@ impl PerCoreScheduler {
 
         Ok(PerCoreScheduler {
             ready_tasks,
+            pending_cleanup: None,
             active_pid,
             idle_pid,
             pid_counter,
+            global_mappings,
         })
     }
+
+    fn switch_to_global_mappings(&self) {
+        unsafe {
+            asm!(
+                "mov cr3, {}",
+                in(reg) self.global_mappings.pml4_physical().as_ptr() as u64
+            );
+            vmm::update(self.global_mappings).unwrap();
+        }
+    }
+
     fn activate_task(task: &mut Task) {
         task.activate().unwrap();
         // update VMM
         unsafe {
             vmm::update(task.mappings()).unwrap();
         }
+    }
+
+    fn destroy_task(&mut self, mut process: Task) -> Result<(), SchedulerError> {
+        self.switch_to_global_mappings();
+        Self::free_stack(process.stack_bottom())?;
+        unsafe { Self::delete_address_space(process.address_space_mut()) }?;
+        Ok(())
     }
 }
 
@@ -158,14 +185,16 @@ impl Scheduler for PerCoreScheduler {
     ) -> Result<(), Self::SchedulerError> {
         let mut locked = VMM.locked();
         let vmm = vmm!(locked);
+        let pml4 = address_space.pml4_virtual_address();
 
         // free all subsequent page tables
         unsafe {
             address_space.clean(vmm.ptm().pmm())?;
-
-            // free the pml4 frame
-            address_space.free(vmm.ptm()).map_err(SchedulerError::from)
         }
+
+        vmm.free(pml4)?;
+        address_space.set_state(scheduler::memory::State::Poisoned);
+        Ok(())
     }
 
     /// Allocates a new task stack using the global virtual memory manager.
@@ -210,11 +239,21 @@ impl Scheduler for PerCoreScheduler {
         self.ready_tasks.push_front(process);
     }
 
+    fn kill_process(&mut self, pid: u64) -> Result<(), Self::SchedulerError> {
+        let process = self.remove_process(pid);
+        self.destroy_task(process)
+    }
+
     fn run(context: &CpuState) -> &CpuState {
         let mut scheduler = SCHEDULER.locked();
         let Some(scheduler) = scheduler.get_mut() else {
             return context;
         };
+        if let Some(process) = scheduler.pending_cleanup.take() {
+            scheduler.destroy_task(process).unwrap();
+        }
+
+        let mut finished_pid = None;
         // first pause the current task
         {
             let current_task_pid = scheduler.active_pid;
@@ -226,35 +265,15 @@ impl Scheduler for PerCoreScheduler {
 
             match current_task.state() {
                 TaskState::Ready => {
-                    // will be freed
-                    let mut pre_mappings = {
-                        let mut locked = VMM.locked();
-                        let vmm = locked.get_mut().unwrap();
-                        let ptm = vmm.ptm().mappings_ref();
-                        let pml4 = ptm.pml4_virtual();
-                        let pml4_phys = ptm.pml4_physical();
-
-                        AddressSpace::new_standalone(pml4_phys, pml4, ptm.nx())
-                    };
-
-                    unsafe {
-                        PerCoreScheduler::delete_address_space(&mut pre_mappings);
-                    }
                     // first time a task is scheduled
                     PerCoreScheduler::activate_task(current_task);
-
-                    serial_println!("i deleted pre-mt stuff");
-
-                    // free pre-mappings
                     return unsafe { current_task.context().as_ref() };
                 }
                 TaskState::Done => {
                     serial_println!("current task is done! (id: {})", current_task_pid);
                     assert_ne!(current_task_pid, scheduler.idle_pid);
                     current_task.pause().expect("scheduler paused - failed");
-
-                    // remove finsihed task
-                    scheduler.kill_process(current_task_pid).unwrap();
+                    finished_pid = Some(current_task_pid);
                 }
                 TaskState::Running => {
                     serial_println!("switch");
@@ -263,6 +282,10 @@ impl Scheduler for PerCoreScheduler {
                     current_task.update(context); // update state to current one
                 }
             }
+        }
+        if let Some(pid) = finished_pid {
+            let process = scheduler.remove_process(pid);
+            assert!(scheduler.pending_cleanup.replace(process).is_none());
         }
         // then activate the next task
         let mut next_task = scheduler

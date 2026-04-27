@@ -82,23 +82,9 @@ pub trait Scheduler {
     /// Creates and inserts a new process into the queue of ready tasks.
     fn insert_process(&mut self, entry: fn()) -> Result<(), Self::SchedulerError>;
 
-    /// Deletes the previously active done process, cleaning up it's memory and removing it from the queue of
+    /// Deletes the previously active done process, cleaning up its memory and removing it from the queue of
     /// tasks.
-    fn kill_process(&mut self, pid: u64) -> Result<(), Self::SchedulerError> {
-        // remove process from queue
-        let mut process = self.remove_process(pid);
-
-        // free stack
-        Self::free_stack(process.stack.bottom)?;
-
-        unimplemented!("need to switch to global mappings");
-        // free mappings
-        unsafe {
-            Self::delete_address_space(&mut process.address_space)?;
-        }
-
-        Ok(())
-    }
+    fn kill_process(&mut self, pid: u64) -> Result<(), Self::SchedulerError>;
 
     /// Schedules the next task.
     fn run(context: &CpuState) -> &CpuState;

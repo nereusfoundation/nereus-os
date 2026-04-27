@@ -64,6 +64,14 @@ impl Task {
         self.pid
     }
 
+    pub fn stack_bottom(&self) -> NonNull<u8> {
+        self.stack.bottom
+    }
+
+    pub fn address_space_mut(&mut self) -> &mut AddressSpace {
+        &mut self.address_space
+    }
+
     pub fn state(&self) -> TaskState {
         self.state
     }
